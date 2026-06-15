@@ -1,0 +1,12 @@
+{
+  "name": "prode-argento",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prode Mundialista (Grupo J 2026) - landing estatica servida con Node",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
