@@ -309,16 +309,24 @@
       {username:user,match_id:mid,home:h,away:a},{onConflict:'username,match_id'}); }
     catch(e){ console.warn('dbSavePick',e); }
   }
-  // traer las predicciones guardadas del usuario y reflejarlas en pantalla
-  async function dbLoadPicks(user){
+  // traer las predicciones guardadas del usuario y reflejarlas en pantalla.
+  // opts.reset=true (al cambiar de usuario): los partidos que ese usuario NO tenga
+  // guardados vuelven a 0-0, para no heredar el pronóstico del usuario anterior.
+  async function dbLoadPicks(user, opts){
     if(!db||!user)return;
+    const reset = !!(opts && opts.reset);
     try{
       const {data}=await db.from('picks').select('match_id,home,away').eq('username',user);
-      (data||[]).forEach(r=>{ if(state[r.match_id]){state[r.match_id].h=r.home;state[r.match_id].a=r.away;} });
+      const map={}; (data||[]).forEach(r=>map[r.match_id]={h:r.home,a:r.away});
       MATCHES.forEach(m=>{
+        if(map[m.id]){ state[m.id].h=map[m.id].h; state[m.id].a=map[m.id].a; state[m.id].saved=true; }
+        else if(reset){ state[m.id].h=0; state[m.id].a=0; state[m.id].saved=false; }
+        else return; // sin reset y sin fila guardada: dejar lo que haya local
         const sh=document.getElementById('sc-'+m.id+'-h'), sa=document.getElementById('sc-'+m.id+'-a');
         if(sh)sh.textContent=state[m.id].h; if(sa)sa.textContent=state[m.id].a;
         store.set('prode_'+m.id,JSON.stringify(state[m.id]));
+        setSteppers(m.id, !!state[m.id].saved); // bloquear/desbloquear +/- según corresponda
+        renderSaveBtn(m.id);                     // y poner el botón en Guardar/Editar
       });
     }catch(e){ console.warn('dbLoadPicks',e); }
   }
@@ -647,7 +655,7 @@
     if(!v){loginInput.focus();return;}
     store.set(USER_KEY,v);store.set(SKIP_KEY,'');
     closeLogin();showGreeting();
-    dbLoadPicks(v); // traer de la base lo que ya tenga guardado ese usuario
+    dbLoadPicks(v,{reset:true}); // cargar lo de ESTE usuario; lo que no tenga, a 0-0
   }
   document.getElementById('loginEnter').addEventListener('click',submitLogin);
   loginInput.addEventListener('keydown',e=>{if(e.key==='Enter')submitLogin();});
