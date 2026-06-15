@@ -70,9 +70,6 @@
     box-shadow:0 8px 20px -10px rgba(31,92,255,.6)}
   .login-btn:hover{background:var(--blue-dark)}
   .login-btn:active{transform:translateY(1px)}
-  .login-skip{display:inline-block;margin-top:14px;font-size:12.5px;font-weight:600;color:var(--muted);
-    background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}
-  .login-skip:hover{color:var(--blue)}
 
   /* ---------- HERO ---------- */
   .hero{text-align:center;margin-bottom:6px}
@@ -220,11 +217,10 @@
   <div class="login-card">
     <div class="login-brand">Prode <span>Argento!</span></div>
     <h2 class="login-title">¡Bienvenido a tu Prode Argento!</h2>
-    <p class="login-sub">Ingresá un nombre de usuario para guardar tu prode. Si no querés, podés entrar igual.</p>
+    <p class="login-sub">Ingresá un nombre de usuario para jugar tu prode.</p>
     <input id="loginInput" class="login-input" type="text" inputmode="text" autocomplete="off"
            maxlength="24" placeholder="Tu nombre de usuario" aria-label="Nombre de usuario">
     <button id="loginEnter" class="login-btn" type="button">Entrar</button>
-    <button id="loginSkip" class="login-skip" type="button">Entrar sin usuario</button>
   </div>
 </div>
 
@@ -631,8 +627,8 @@
     }
   }
 
-  // ---------- LOGIN (usuario opcional) ----------
-  const USER_KEY='prode_user', SKIP_KEY='prode_user_skip';
+  // ---------- LOGIN (usuario obligatorio para el público) ----------
+  const USER_KEY='prode_user';
   const login=document.getElementById('login');
   const greeting=document.getElementById('greeting');
   const loginInput=document.getElementById('loginInput');
@@ -653,17 +649,14 @@
   function submitLogin(){
     const v=(loginInput.value||'').trim();
     if(!v){loginInput.focus();return;}
-    store.set(USER_KEY,v);store.set(SKIP_KEY,'');
+    store.set(USER_KEY,v);
     closeLogin();showGreeting();
     dbLoadPicks(v,{reset:true}); // cargar lo de ESTE usuario; lo que no tenga, a 0-0
   }
   document.getElementById('loginEnter').addEventListener('click',submitLogin);
   loginInput.addEventListener('keydown',e=>{if(e.key==='Enter')submitLogin();});
-  document.getElementById('loginSkip').addEventListener('click',()=>{
-    store.set(SKIP_KEY,'1');closeLogin();
-  });
-  // pedir usuario solo si no es modo admin y no hay uno guardado ni eligió entrar sin usuario
-  if(!ADMIN_CTX && !store.get(USER_KEY)&&store.get(SKIP_KEY)!=='1')login.classList.add('show');
+  // usuario OBLIGATORIO: si no es modo admin y no hay usuario, se pide (no se puede saltar)
+  if(!ADMIN_CTX && !store.get(USER_KEY)){login.classList.add('show');loginInput.focus();}
   showGreeting();
 
   // ocultar pantalla de carga
