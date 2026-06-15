@@ -185,12 +185,24 @@
   .admin-btn.sec{background:var(--blue-soft);color:var(--blue)}
   .admin-btn.sec:hover{background:var(--blue-border)}
   .amsg{font-size:11.5px;font-weight:700;color:var(--blue);margin:8px 0 0;min-height:14px}
-  .rank{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  .rank{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;overflow-x:auto}
+  .rank>b{font-size:13px;color:var(--ink)}
+  .rank-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .rank-h b{font-size:13px;color:var(--ink)}
   .rank table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
-  .rank th,.rank td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line)}
+  .rank th,.rank td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
   .rank th{color:var(--muted);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
   .rank td.num,.rank th.num{text-align:center}
-  .rank tbody tr:first-child td{font-weight:800;color:var(--ink)}
+  .rank tbody tr:first-child td{color:var(--ink)}
+  .rank td.ok{color:var(--blue);font-weight:800}      /* marcador exacto */
+  .rank td.half{color:var(--ink);font-weight:700}     /* acertó el ganador */
+  .rank .leg{font-size:10.5px;color:var(--muted);margin-top:6px}
+  .rank .leg b{color:var(--blue)}
+
+  /* ---------- OVERLAY CLAVE ADMIN ---------- */
+  #adminGate{position:fixed;inset:0;z-index:45;display:none;flex-direction:column;
+    align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+  #adminGate.show{display:flex}
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important}
@@ -213,6 +225,18 @@
            maxlength="24" placeholder="Tu nombre de usuario" aria-label="Nombre de usuario">
     <button id="loginEnter" class="login-btn" type="button">Entrar</button>
     <button id="loginSkip" class="login-skip" type="button">Entrar sin usuario</button>
+  </div>
+</div>
+
+<div id="adminGate">
+  <div class="login-card">
+    <div class="login-brand">Prode <span>Argento!</span></div>
+    <h2 class="login-title">🔐 Modo admin</h2>
+    <p class="login-sub">Ingresá la clave de administrador para continuar.</p>
+    <input id="adminKey" class="login-input" type="password" autocomplete="off"
+           placeholder="Clave de admin" aria-label="Clave de admin">
+    <button id="adminEnter" class="login-btn" type="button">Entrar</button>
+    <div class="amsg" id="adminGateMsg" style="text-align:center"></div>
   </div>
 </div>
 
@@ -265,8 +289,8 @@
   // La anon key es pública por diseño (la protege RLS). Se puede commitear sin problema.
   const SUPABASE_URL='https://zweuocmktiafhjkjsxcy.supabase.co';
   const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3ZXVvY21rdGlhZmhqa2pzeGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQ3MDgsImV4cCI6MjA5NzEzMDcwOH0.FC0DpnPVefZOL0XjJ3PIGExvkgZ7Zvmzx0Bl5qQ-COw';
-  // clave del modo admin: entrar con  ?admin=CLAVE  (cambiala por la que quieras)
-  const ADMIN_KEY='prodeargento2026';
+  // clave del modo admin: entrar con  ?admin  y escribir la clave (o ?admin=CLAVE directo)
+  const ADMIN_KEY='Arkana2025';
 
   const db = (window.supabase && /^https?:\/\//.test(SUPABASE_URL))
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -399,19 +423,26 @@
       if(diff===0)location.reload();
     });
   }
-  // congelar el pronóstico cuando arranca el partido (kickoff)
+  // el pronóstico se cierra 10 minutos ANTES del kickoff
+  const LOCK_LEAD_MS=10*60*1000;
+  const lockTime=m=>m.kickoff.getTime()-LOCK_LEAD_MS;
+  // congelar el pronóstico: bloquea edición y deja la predicción guardada (local + Supabase)
   function freezeMatch(m){
     const card=document.getElementById('card-'+m.id);
     if(!card||card.dataset.frozen)return;
     card.dataset.frozen='1';
     card.querySelectorAll('.stepper button').forEach(b=>b.disabled=true);
     const sb=card.querySelector('.savebtn');if(sb)sb.style.display='none';
+    // al cerrarse, dejar la predicción fijada y guardada en la base (si hay usuario)
+    state[m.id].saved=true;
+    store.set('prode_'+m.id,JSON.stringify(state[m.id]));
+    dbSavePick(currentUser(), m.id, state[m.id].h, state[m.id].a);
     if(!results[m.id]){
       const el=document.getElementById('rs-'+m.id);
-      if(el){el.innerHTML='<div class="pending">🔒 Pronóstico cerrado · esperando resultado…</div>';el.classList.add('show');}
+      if(el){el.innerHTML='<div class="pending">🔒 Pronóstico cerrado y guardado · esperando resultado…</div>';el.classList.add('show');}
     }
   }
-  function freezeTick(){MATCHES.forEach(m=>{if(new Date()>=m.kickoff)freezeMatch(m);});}
+  function freezeTick(){MATCHES.forEach(m=>{if(Date.now()>=lockTime(m))freezeMatch(m);});}
 
   // mostrar el resultado real y compararlo con el pronóstico
   function showResult(m,real){
@@ -471,8 +502,10 @@
   // traer las predicciones guardadas del usuario logueado (si las hay en la base)
   dbLoadPicks(currentUser());
 
-  // ---------- MODO ADMIN (?admin=CLAVE) ----------
-  const ADMIN = !!ADMIN_KEY && params.get('admin')===ADMIN_KEY;
+  // ---------- MODO ADMIN ----------
+  // Se entra con ?admin (pide la clave) o ?admin=CLAVE (entra directo). No pide usuario.
+  const ADMIN_CTX = params.has('admin');
+
   function computeRanking(picks,res){
     const byUser={};
     picks.forEach(p=>{
@@ -491,7 +524,7 @@
       const r1=await db.from('picks').select('username,match_id,home,away');
       const res=await dbGetResults();
       const rows=computeRanking(r1.data||[],res);
-      if(!rows.length){box.innerHTML='<div class="ahint">Todavía no hay datos para rankear (faltan predicciones o resultados).</div>';return;}
+      if(!rows.length){box.innerHTML='<div class="ahint">Todavía no hay ganadores (faltan predicciones o cargar resultados).</div>';return;}
       box.innerHTML='<table><thead><tr><th class="num">#</th><th>Usuario</th>'+
         '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th></tr></thead><tbody>'+
         rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td></td>`+
@@ -500,6 +533,40 @@
       box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.children[1].textContent=rows[i].user;}); // evita inyección
     }catch(e){box.textContent='Error: '+(e.message||e);}
   }
+  // lista de TODOS los participantes con sus pronósticos por partido
+  async function renderParticipants(){
+    const box=document.getElementById('partBox');
+    if(!db){box.textContent='Supabase no configurado.';return;}
+    box.textContent='Cargando…';
+    try{
+      const r1=await db.from('picks').select('username,match_id,home,away');
+      const res=await dbGetResults();
+      const rows=r1.data||[];
+      if(!rows.length){box.innerHTML='<div class="ahint">Todavía no jugó nadie.</div>';return;}
+      const byUser={};
+      rows.forEach(p=>{(byUser[p.username]||(byUser[p.username]={}))[p.match_id]={h:p.home,a:p.away};});
+      const users=Object.keys(byUser).sort((a,b)=>a.localeCompare(b));
+      const head=MATCHES.map(m=>'<th class="num">'+m.md.replace('Fecha ','F').split(' · ')[0]+'</th>').join('');
+      let html='<table><thead><tr><th>Usuario</th>'+head+'<th class="num">Pts</th></tr></thead><tbody>';
+      html+=users.map(u=>{
+        let pts=0;
+        const cells=MATCHES.map(m=>{
+          const pk=byUser[u][m.id];
+          if(!pk)return '<td class="num">—</td>';
+          let cls='num';const r=res[m.id];
+          if(r){ if(pk.h===r.h&&pk.a===r.a){pts+=3;cls+=' ok';}
+                 else if(Math.sign(pk.h-pk.a)===Math.sign(r.h-r.a)){pts+=1;cls+=' half';} }
+          return '<td class="'+cls+'">'+pk.h+'-'+pk.a+'</td>';
+        }).join('');
+        return '<tr><td class="uname"></td>'+cells+'<td class="num">'+pts+'</td></tr>';
+      }).join('');
+      html+='</tbody></table>'+
+        '<div class="leg">Total: <b>'+users.length+'</b> participantes · <b>azul</b> = marcador exacto · <b>negrita</b> = acertó ganador</div>';
+      box.innerHTML=html;
+      box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.querySelector('.uname').textContent=users[i];}); // evita inyección
+    }catch(e){box.textContent='Error: '+(e.message||e);}
+  }
+  function refreshAdmin(){ renderRanking(); renderParticipants(); }
   async function saveAdminResult(mid){
     const msg=document.getElementById('amsg');
     if(!db){msg.textContent='Supabase no configurado.';return;}
@@ -511,6 +578,7 @@
       msg.textContent='Resultado guardado ✓ (ya lo ven todos)';
       const m=MATCHES.find(x=>x.id===mid);
       results[mid]=null; showResult(m,{h,a}); // refrescar la tarjeta al instante
+      refreshAdmin();                          // y refrescar ganadores + participantes
     }catch(e){msg.textContent='Error guardando: '+(e.message||e);}
   }
   async function initAdmin(){
@@ -528,13 +596,32 @@
           '<button class="admin-btn" data-rm="'+m.id+'">Guardar resultado</button></div>';
       }).join('')+
       '<div class="amsg" id="amsg"></div>'+
-      '<div class="rank"><button class="admin-btn sec" id="loadRank">🏆 Ver ganadores</button>'+
-      '<div id="rankBox"></div></div>';
+      '<div class="rank"><div class="rank-h"><b>🏆 Ganadores</b>'+
+      '<button class="admin-btn sec" id="refreshAll">↻ Actualizar</button></div><div id="rankBox"></div></div>'+
+      '<div class="rank"><b>👥 Todos los participantes</b><div id="partBox"></div></div>';
     panel.classList.add('show');
     panel.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>saveAdminResult(b.dataset.rm)));
-    document.getElementById('loadRank').addEventListener('click',renderRanking);
+    document.getElementById('refreshAll').addEventListener('click',refreshAdmin);
+    refreshAdmin(); // mostrar ganadores y participantes al toque
   }
-  if(ADMIN) initAdmin();
+
+  // gate por clave: en modo admin NO se pide usuario, se pide la clave de admin
+  const adminGate=document.getElementById('adminGate');
+  function unlockAdmin(){ adminGate.classList.remove('show'); initAdmin(); }
+  function tryAdminKey(v){
+    if(v===ADMIN_KEY){ unlockAdmin(); }
+    else { document.getElementById('adminGateMsg').textContent='Clave incorrecta'; }
+  }
+  if(ADMIN_CTX){
+    if(params.get('admin')===ADMIN_KEY){ unlockAdmin(); }   // ?admin=CLAVE => entra directo
+    else {                                                  // ?admin => pide la clave
+      adminGate.classList.add('show');
+      const ak=document.getElementById('adminKey');
+      document.getElementById('adminEnter').addEventListener('click',()=>tryAdminKey(ak.value.trim()));
+      ak.addEventListener('keydown',e=>{if(e.key==='Enter')tryAdminKey(ak.value.trim());});
+      ak.focus();
+    }
+  }
 
   // ---------- LOGIN (usuario opcional) ----------
   const USER_KEY='prode_user', SKIP_KEY='prode_user_skip';
@@ -567,8 +654,8 @@
   document.getElementById('loginSkip').addEventListener('click',()=>{
     store.set(SKIP_KEY,'1');closeLogin();
   });
-  // pedir usuario solo si no hay uno guardado ni eligió entrar sin usuario
-  if(!store.get(USER_KEY)&&store.get(SKIP_KEY)!=='1')login.classList.add('show');
+  // pedir usuario solo si no es modo admin y no hay uno guardado ni eligió entrar sin usuario
+  if(!ADMIN_CTX && !store.get(USER_KEY)&&store.get(SKIP_KEY)!=='1')login.classList.add('show');
   showGreeting();
 
   // ocultar pantalla de carga

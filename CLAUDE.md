@@ -82,10 +82,13 @@ gratuita de TheSportsDB desde el navegador (CORS habilitado):
   pasó. Cuando hay resultado, `showResult()` lo pinta y compara contra el pronóstico:
   **`exact`** (marcador exacto → badge azul lleno), **`win`** (acertó el ganador →
   badge azul claro) o **`miss`** (gris). `updateSummary()` actualiza `#summary`.
-- **Congelado:** cada match tiene `kickoff` (hora del partido). `freezeTick()` (cada
-  30 s) deshabilita los `+/-` cuando arranca el partido y muestra "Pronóstico cerrado
-  · esperando resultado…". Es integridad best-effort (sin backend no se puede impedir
-  que alguien borre su `localStorage`).
+- **Congelado:** cada match tiene `kickoff` (hora del partido). El pronóstico se
+  **cierra 10 minutos antes** (`LOCK_LEAD_MS`/`lockTime(m)`): `freezeTick()` (cada
+  30 s) deshabilita los `+/-`, oculta el botón Guardar, **fija la predicción
+  (`saved=true`) y la guarda en Supabase** (`dbSavePick`) y muestra "Pronóstico
+  cerrado y guardado · esperando resultado…". Hasta ese momento es editable. Es
+  integridad best-effort en el cliente (sin cron/backend, el cierre solo corre si el
+  usuario tiene la página abierta; pero al guardar/editar ya se persiste en la base).
 - **Bono + modal:** al acertar el **marcador exacto** (`cls==='exact'`) se muestra el
   banner `.bonus` ("Sacale captura y mandala al webchat") y salta la **ventana
   emergente** `#winModal` ("¡GANAMOS Y GANASTE! · 200% · +1500 fichas") vía `openWin()`.
@@ -137,13 +140,17 @@ todo en el `.html`; el cliente entra por CDN `@supabase/supabase-js@2`).
   usuario** sigue andando, pero no participa del ranking ni sincroniza.
 - **Resultados**: `checkAdminResults` lee la tabla `results` y tiene **prioridad**
   sobre TheSportsDB (corre primero; `checkResults` completa los que falten). Cada 60 s.
-- **Modo admin**: se entra con `?admin=<ADMIN_KEY>` (default `prodeargento2026`).
-  Panel `#admin` con un input de marcador por partido (izq = primer equipo) +
-  "Guardar resultado" (`saveAdminResult` → `upsert` a `results`, refresca la tarjeta)
-  y "🏆 Ver ganadores" (`renderRanking` + `computeRanking`: **exacto = 3 pts, ganador
-  acertado = 1 pt**, ordena por puntos). Seguridad **best-effort**: la clave viaja en
-  la URL y está en el código; la RLS no distingue admin. Sirve para un prode entre
-  conocidos.
+- **Modo admin**: contexto admin = `?admin` presente (`ADMIN_CTX`). En modo admin
+  **no se pide usuario**; se muestra el overlay `#adminGate` que pide la **clave**
+  (`ADMIN_KEY`, hoy `Arkana2025`). Con `?admin=<ADMIN_KEY>` entra directo sin pedirla.
+  Panel `#admin` con: input de marcador por partido (izq = primer equipo) + "Guardar
+  resultado" (`saveAdminResult` → `upsert` a `results`, refresca tarjeta + tablas);
+  **🏆 Ganadores** (`renderRanking` + `computeRanking`: **exacto = 3 pts, ganador
+  acertado = 1 pt**) y **👥 Todos los participantes** (`renderParticipants`: tabla con
+  el pronóstico de cada usuario por fecha + pts; azul = exacto, negrita = ganador).
+  Ambas se cargan solas al entrar (`refreshAdmin`) y con "↻ Actualizar". Seguridad
+  **best-effort**: la clave está en el código y la RLS no distingue admin. Sirve para
+  un prode entre conocidos.
 
 ## Lógica de desbloqueo
 
