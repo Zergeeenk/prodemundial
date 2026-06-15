@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#eef1f7">
+<title>Prode Argento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1f7;
+    --card:#ffffff;
+    --ink:#16203a;
+    --muted:#8a94ac;
+    --line:#e6eaf2;
+    --blue:#1f5cff;
+    --blue-dark:#1147d8;
+    --blue-soft:#eaf0ff;
+    --blue-border:#cfdcff;
+    --shadow:0 8px 24px -14px rgba(20,30,60,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;color:var(--ink);
+    background:
+      radial-gradient(circle at 18% 12%, #ffffff 0%, transparent 50%),
+      radial-gradient(circle at 88% 6%,  #d4dae7 0%, transparent 55%),
+      radial-gradient(circle at 80% 92%, #c3cbdc 0%, transparent 55%),
+      radial-gradient(circle at 6% 94%,  #e2e7f0 0%, transparent 50%),
+      #ccd3e0;
+    background-attachment:fixed;
+    padding:26px 16px 40px;
+    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:520px;margin:0 auto}
+
+  /* ---------- PANTALLA DE CARGA ---------- */
+  #loader{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:22px;background:var(--bg);
+    transition:opacity .45s ease,visibility .45s ease}
+  #loader.hide{opacity:0;visibility:hidden}
+  #loader .loader-brand{font-size:24px;font-weight:900;letter-spacing:-.5px;color:var(--ink)}
+  #loader .spinner{width:38px;height:38px;border-radius:50%;
+    border:3px solid #dfe6f5;border-top-color:var(--blue);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loader .ltext{font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:700;color:var(--muted)}
+
+  /* ---------- LOGIN ---------- */
+  #login{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;
+    align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+  #login.show{display:flex}
+  .login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);
+    border-radius:18px;padding:28px 24px;box-shadow:var(--shadow);text-align:center}
+  .login-brand{font-size:15px;font-weight:900;letter-spacing:-.2px;color:var(--ink);margin-bottom:14px}
+  .login-brand span{color:var(--blue)}
+  .login-title{font-size:21px;font-weight:900;letter-spacing:-.4px;color:var(--ink);margin-bottom:6px;line-height:1.1}
+  .login-sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+  .login-input{width:100%;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);
+    padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;
+    margin-bottom:12px;outline:none;transition:.15s}
+  .login-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .login-btn{width:100%;border:none;border-radius:12px;cursor:pointer;font-family:inherit;
+    font-size:14px;font-weight:800;color:#fff;padding:13px;background:var(--blue);transition:.15s;
+    box-shadow:0 8px 20px -10px rgba(31,92,255,.6)}
+  .login-btn:hover{background:var(--blue-dark)}
+  .login-btn:active{transform:translateY(1px)}
+  .login-skip{display:inline-block;margin-top:14px;font-size:12.5px;font-weight:600;color:var(--muted);
+    background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}
+  .login-skip:hover{color:var(--blue)}
+
+  /* ---------- HERO ---------- */
+  .hero{text-align:center;margin-bottom:6px}
+  .greeting{display:none;font-size:13px;font-weight:700;color:var(--blue);margin-bottom:4px}
+  .greeting.show{display:block}
+  .greeting button{background:none;border:none;color:var(--muted);font-size:11.5px;cursor:pointer;
+    text-decoration:underline;font-family:inherit;margin-left:6px;font-weight:600}
+  .greeting button:hover{color:var(--blue)}
+  .title{font-size:clamp(26px,7.5vw,36px);font-weight:900;letter-spacing:-.8px;
+    color:var(--ink);margin:6px 0 0;line-height:1.04}
+  .title span{color:var(--blue)}
+  .lede{color:var(--muted);font-size:13px;line-height:1.5;max-width:360px;margin:9px auto 22px}
+  .lede b{color:var(--ink);font-weight:700}
+
+  /* ---------- RESUMEN ---------- */
+  .summary{display:none;text-align:center;margin:0 auto 18px;max-width:430px;
+    padding:11px 16px;border:1px solid var(--blue-border);border-radius:13px;
+    background:var(--blue-soft);font-size:13px;color:var(--ink)}
+  .summary.show{display:block}
+  .summary b{font-weight:800;color:var(--blue);font-size:16px;margin:0 2px}
+  .summary span{color:var(--muted)}
+
+  /* ---------- MATCH CARD ---------- */
+  .card{position:relative;background:var(--card);border:1px solid var(--line);
+    border-radius:15px;padding:11px 14px 12px;margin-bottom:11px;box-shadow:var(--shadow);overflow:hidden}
+  .card.featured{border-color:var(--blue-border);box-shadow:0 10px 28px -14px rgba(31,92,255,.4)}
+
+  .ribbon{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.6px;
+    text-transform:uppercase;color:var(--blue);background:var(--blue-soft);
+    border:1px solid var(--blue-border);padding:3px 9px;border-radius:999px;margin-bottom:7px}
+
+  .card-top{display:flex;align-items:center;justify-content:space-between}
+  .matchday{font-size:14px;font-weight:800;color:var(--ink);letter-spacing:-.2px}
+  .time{font-size:14px;font-weight:800;color:var(--ink)}
+  .daymeta{font-size:11.5px;color:var(--muted);margin-top:2px;font-weight:500}
+
+  .teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:9px}
+  .team{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .flag{width:38px;height:38px;border-radius:11px;object-fit:cover;
+    border:1px solid var(--line);box-shadow:0 3px 8px -4px rgba(20,30,60,.35)}
+  .team-name{font-size:11.5px;font-weight:700;color:var(--ink);text-align:center;
+    min-height:14px;line-height:1.15}
+  .team-name.arg{color:var(--blue)}
+
+  .vs{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+
+  .stepper{display:flex;align-items:center;gap:5px;margin-top:1px}
+  .stepper button{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);
+    background:#f4f7fc;color:var(--blue);font-size:17px;font-weight:700;cursor:pointer;
+    display:grid;place-items:center;line-height:1;transition:.12s;-webkit-tap-highlight-color:transparent}
+  .stepper button:hover{background:var(--blue-soft);border-color:var(--blue-border)}
+  .stepper button:active{transform:scale(.92)}
+  .stepper button:disabled{opacity:.4;cursor:not-allowed}
+  .stepper button:disabled:hover{background:#f4f7fc;border-color:var(--line)}
+  .score{font-size:20px;font-weight:800;min-width:38px;height:34px;text-align:center;color:var(--ink);
+    background:#fff;border:1.5px solid var(--line);border-radius:10px;display:grid;place-items:center}
+
+  /* ---------- LOCK ---------- */
+  .lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:9px;text-align:center;padding:16px;
+    background:rgba(255,255,255,.9);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .lock .ico{font-size:30px;line-height:1;color:var(--blue)}
+  .lock .ltxt{font-size:13px;color:var(--muted);max-width:240px;line-height:1.45}
+  .lock .ltxt b{color:var(--ink)}
+  .countdown{display:flex;gap:7px;margin-top:3px}
+  .countdown span{background:var(--blue-soft);border:1px solid var(--blue-border);border-radius:10px;
+    padding:6px 9px;min-width:46px;font-size:19px;font-weight:800;color:var(--blue)}
+  .countdown span small{display:block;font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1px}
+
+  /* ---------- RESULTADO REAL ---------- */
+  .result{display:none;flex-direction:column;align-items:center;gap:10px;
+    margin-top:15px;padding-top:14px;border-top:1px solid var(--line)}
+  .result.show{display:flex}
+  .result .real{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .result .real b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:1px;margin-left:8px;vertical-align:-2px}
+  .result .pending{font-size:12px;font-weight:600;color:var(--muted)}
+  .badge{font-size:13px;font-weight:800;letter-spacing:.3px;padding:8px 16px;border-radius:999px}
+  .badge.exact{color:#fff;background:var(--blue);box-shadow:0 6px 16px -6px rgba(31,92,255,.6)}
+  .badge.win{color:var(--blue);background:var(--blue-soft);border:1px solid var(--blue-border)}
+  .badge.miss{color:var(--muted);background:#f1f3f8;border:1px solid var(--line)}
+
+  /* ---------- GUARDAR (botón por tarjeta) ---------- */
+  .savebtn{width:100%;margin-top:11px;border:none;border-radius:11px;cursor:pointer;
+    font-family:inherit;font-size:13.5px;font-weight:800;letter-spacing:.3px;color:#fff;
+    padding:11px;background:var(--blue);transition:.15s;-webkit-tap-highlight-color:transparent;
+    box-shadow:0 8px 20px -10px rgba(31,92,255,.6)}
+  .savebtn:hover{background:var(--blue-dark)}
+  .savebtn:active{transform:translateY(1px)}
+  .savebtn.saved{background:var(--blue-soft);color:var(--blue);box-shadow:none}
+  .savebtn:disabled{opacity:.5;cursor:not-allowed}
+
+  .legal{text-align:center;font-size:11px;color:var(--muted);margin-top:24px;line-height:1.6}
+  .legal b{color:var(--ink);font-weight:700}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important}
+  }
+</style>
+</head>
+<body>
+<div id="loader">
+  <div class="loader-brand">Prode <span style="color:var(--blue)">Argento!</span></div>
+  <div class="spinner"></div>
+  <div class="ltext">Cargando tu prode…</div>
+</div>
+
+<div id="login">
+  <div class="login-card">
+    <div class="login-brand">Prode <span>Argento!</span></div>
+    <h2 class="login-title">¡Bienvenido a tu Prode Argento!</h2>
+    <p class="login-sub">Ingresá un nombre de usuario para guardar tu prode. Si no querés, podés entrar igual.</p>
+    <input id="loginInput" class="login-input" type="text" inputmode="text" autocomplete="off"
+           maxlength="24" placeholder="Tu nombre de usuario" aria-label="Nombre de usuario">
+    <button id="loginEnter" class="login-btn" type="button">Entrar</button>
+    <button id="loginSkip" class="login-skip" type="button">Entrar sin usuario</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div id="greeting" class="greeting"></div>
+    <h1 class="title">Prode <span>Argento!</span></h1>
+    <p class="lede">Pronosticá cada partido de Argentina. <b>El debut ya está abierto</b>; el resto se abre el día del partido.</p>
+  </div>
+
+  <div id="summary" class="summary"></div>
+
+  <div id="matches"></div>
+
+  <p class="legal">Juego de pronósticos sin valor monetario · Solo para mayores de <b>+18</b> · Jugá responsable.</p>
+</div>
+
+<script>
+(function(){
+  // banderas reales (archivos locales; espacios escapados como %20)
+  const F={arg:'Bandera%20Argentina.webp', alg:'Bandera%20Argelia.jpg',
+           aut:'Bandera%20austria.avif', jor:'jordania%20bandera.avif'};
+
+  // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
+  // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
+  const MATCHES = [
+    { id:'m1', md:'Fecha 1 · Debut', home:'Argentina', away:'Argelia',
+      himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
+      unlock:new Date(2026,5,16,0,0,0), kickoff:new Date(2026,5,16,22,0,0),
+      evName:'Argentina_vs_Algeria', apiHomeLeft:true, forceOpen:true, featured:true },
+    { id:'m2', md:'Fecha 2', home:'Austria', away:'Argentina',
+      himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
+      unlock:new Date(2026,5,22,0,0,0), kickoff:new Date(2026,5,22,14,0,0),
+      evName:'Argentina_vs_Austria', apiHomeLeft:false },
+    { id:'m3', md:'Fecha 3', home:'Argentina', away:'Jordania',
+      himg:F.arg, aimg:F.jor, date:'Sábado 27 de junio', time:'23:00', venue:'Kansas City',
+      unlock:new Date(2026,5,27,0,0,0), kickoff:new Date(2026,5,27,23,0,0),
+      evName:'Jordan_vs_Argentina', apiHomeLeft:false },
+  ];
+
+  // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
+  const API='https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=';
+  const WC_LEAGUE='4429';
+  const results={};
+
+  const PREVIEW = new URLSearchParams(location.search).get('preview')==='1';
+  const mem={};
+  const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},
+               set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
+
+  const state={};
+  MATCHES.forEach(m=>{let s=null;try{s=JSON.parse(store.get('prode_'+m.id))}catch(e){}state[m.id]=s||{h:0,a:0}});
+
+  const isOpen=m=>PREVIEW||m.forceOpen||new Date()>=m.unlock;
+
+  function teamBlock(m,side){
+    const name=side==='h'?m.home:m.away;
+    const img=side==='h'?m.himg:m.aimg;
+    const isArg=name==='Argentina';
+    return `<div class="team">
+      <img class="flag" src="${img}" alt="">
+      <div class="team-name ${isArg?'arg':''}">${name}</div>
+      <div class="stepper">
+        <button data-m="${m.id}" data-s="${side}" data-d="-1" aria-label="restar">−</button>
+        <div class="score" id="sc-${m.id}-${side}">${state[m.id][side]}</div>
+        <button data-m="${m.id}" data-s="${side}" data-d="1" aria-label="sumar">+</button>
+      </div>
+    </div>`;
+  }
+  function cardHTML(m){
+    const open=isOpen(m);
+    return `<div class="card ${open?'open':''} ${m.featured?'featured':''}" id="card-${m.id}">
+      ${m.featured?'<div class="ribbon">Ya disponible</div>':''}
+      <div class="card-top">
+        <span class="matchday">${m.md}</span>
+        <span class="time">${m.time} hs</span>
+      </div>
+      <div class="daymeta">${m.date} · ${m.venue}</div>
+      <div class="teams">
+        ${teamBlock(m,'h')}
+        <div class="vs">vs</div>
+        ${teamBlock(m,'a')}
+      </div>
+      <div class="result" id="rs-${m.id}"></div>
+      ${open?`<button class="savebtn" data-m="${m.id}">Guardar predicción</button>`:`<div class="lock">
+        <div class="ico">&#x1F512;&#xFE0E;</div>
+        <div class="ltxt">Se desbloquea el<br><b>${m.date}</b></div>
+        <div class="countdown" id="cd-${m.id}"></div>
+      </div>`}
+    </div>`;
+  }
+
+  document.getElementById('matches').innerHTML=MATCHES.map(cardHTML).join('');
+
+  document.querySelectorAll('.stepper button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const {m,s,d}=b.dataset;
+      state[m][s]=Math.max(0,Math.min(20,state[m][s]+(+d)));
+      document.getElementById(`sc-${m}-${s}`).textContent=state[m][s];
+      store.set('prode_'+m,JSON.stringify(state[m]));
+    });
+  });
+
+  function setSteppers(m,disabled){
+    const card=document.getElementById('card-'+m);if(!card)return;
+    card.querySelectorAll('.stepper button').forEach(b=>b.disabled=disabled);
+  }
+  function renderSaveBtn(m){
+    const card=document.getElementById('card-'+m);if(!card)return;
+    const sb=card.querySelector('.savebtn');if(!sb)return;
+    if(state[m].saved){sb.classList.add('saved');sb.textContent='✏️ Editar predicción';sb.dataset.mode='edit';}
+    else{sb.classList.remove('saved');sb.textContent='Guardar predicción';sb.dataset.mode='save';}
+  }
+  document.querySelectorAll('.savebtn').forEach(sb=>{
+    const m=sb.dataset.m;
+    sb.addEventListener('click',()=>{
+      state[m].saved = sb.dataset.mode!=='edit'; // guardar => bloquea ; editar => desbloquea
+      store.set('prode_'+m,JSON.stringify(state[m]));
+      setSteppers(m,state[m].saved);
+      renderSaveBtn(m);
+    });
+    if(state[m].saved)setSteppers(m,true); // si ya venía guardada de antes, arranca bloqueada
+    renderSaveBtn(m);
+  });
+
+  const pad=n=>String(n).padStart(2,'0');
+  function tick(){
+    MATCHES.forEach(m=>{
+      if(isOpen(m))return;
+      const el=document.getElementById('cd-'+m.id);if(!el)return;
+      let diff=Math.max(0,m.unlock-new Date());
+      const d=Math.floor(diff/864e5),h=Math.floor(diff%864e5/36e5),mi=Math.floor(diff%36e5/6e4);
+      el.innerHTML=`<span>${pad(d)}<small>DÍAS</small></span><span>${pad(h)}<small>HS</small></span><span>${pad(mi)}<small>MIN</small></span>`;
+      if(diff===0)location.reload();
+    });
+  }
+  // congelar el pronóstico cuando arranca el partido (kickoff)
+  function freezeMatch(m){
+    const card=document.getElementById('card-'+m.id);
+    if(!card||card.dataset.frozen)return;
+    card.dataset.frozen='1';
+    card.querySelectorAll('.stepper button').forEach(b=>b.disabled=true);
+    const sb=card.querySelector('.savebtn');if(sb)sb.style.display='none';
+    if(!results[m.id]){
+      const el=document.getElementById('rs-'+m.id);
+      if(el){el.innerHTML='<div class="pending">🔒 Pronóstico cerrado · esperando resultado…</div>';el.classList.add('show');}
+    }
+  }
+  function freezeTick(){MATCHES.forEach(m=>{if(new Date()>=m.kickoff)freezeMatch(m);});}
+
+  // mostrar el resultado real y compararlo con el pronóstico
+  function showResult(m,real){
+    results[m.id]=real;
+    freezeMatch(m);
+    const el=document.getElementById('rs-'+m.id);if(!el)return;
+    const p=state[m.id];
+    let cls,txt;
+    if(p.h===real.h&&p.a===real.a){cls='exact';txt='¡Acertaste el marcador!';}
+    else if(Math.sign(p.h-p.a)===Math.sign(real.h-real.a)){cls='win';txt='Acertaste el ganador';}
+    else{cls='miss';txt='No acertaste';}
+    el.innerHTML=`<div class="real">Resultado real<b>${real.h} - ${real.a}</b></div><div class="badge ${cls}">${txt}</div>`;
+    el.classList.add('show');
+    updateSummary();
+  }
+  function updateSummary(){
+    const ids=Object.keys(results);if(!ids.length)return;
+    let exact=0,win=0;
+    MATCHES.forEach(m=>{const r=results[m.id];if(!r)return;const p=state[m.id];
+      if(p.h===r.h&&p.a===r.a)exact++;else if(Math.sign(p.h-p.a)===Math.sign(r.h-r.a))win++;});
+    const s=document.getElementById('summary');
+    s.innerHTML=`<b>${exact}</b> marcador${exact===1?'':'es'} exacto${exact===1?'':'s'} · `+
+                `<b>${win}</b> ganador${win===1?'':'es'} acertado${win===1?'':'s'} `+
+                `<span>de ${ids.length} jugado${ids.length===1?'':'s'}</span>`;
+    s.classList.add('show');
+  }
+
+  // leer el resultado real desde TheSportsDB (filtra Mundial 2026)
+  async function fetchResult(m){
+    try{
+      const r=await fetch(API+m.evName);
+      const d=await r.json();
+      const list=(d&&d.event)||[];
+      const ev=list.find(e=>e.idLeague===WC_LEAGUE && (e.dateEvent||'').slice(0,4)==='2026');
+      if(!ev)return null;
+      const hs=ev.intHomeScore,as=ev.intAwayScore;
+      if(hs==null||hs===''||as==null||as==='')return null;
+      // mapear el "local" de la API al lado correcto en pantalla (h=izquierda, a=derecha)
+      return m.apiHomeLeft ? {h:+hs,a:+as} : {h:+as,a:+hs};
+    }catch(e){return null;}
+  }
+  async function checkResults(){
+    for(const m of MATCHES){
+      if(results[m.id])continue;
+      if(new Date()<m.kickoff)continue; // todavía no se jugó
+      const real=await fetchResult(m);
+      if(real)showResult(m,real);
+    }
+  }
+
+  freezeTick();setInterval(freezeTick,30000);
+  tick();setInterval(tick,30000);
+  checkResults();setInterval(checkResults,90000);
+
+  // ---------- LOGIN (usuario opcional, sin backend) ----------
+  const USER_KEY='prode_user', SKIP_KEY='prode_user_skip';
+  const login=document.getElementById('login');
+  const greeting=document.getElementById('greeting');
+  const loginInput=document.getElementById('loginInput');
+
+  function showGreeting(){
+    const u=store.get(USER_KEY);
+    if(u){
+      greeting.innerHTML='Hola, <b></b> <button type="button" id="changeUser">cambiar</button>';
+      greeting.querySelector('b').textContent=u; // textContent: evita inyección de HTML
+      greeting.classList.add('show');
+      document.getElementById('changeUser').addEventListener('click',openLogin);
+    }else{
+      greeting.classList.remove('show');greeting.innerHTML='';
+    }
+  }
+  function openLogin(){login.classList.add('show');loginInput.value=store.get(USER_KEY)||'';loginInput.focus();}
+  function closeLogin(){login.classList.remove('show');}
+  function submitLogin(){
+    const v=(loginInput.value||'').trim();
+    if(!v){loginInput.focus();return;}
+    store.set(USER_KEY,v);store.set(SKIP_KEY,'');
+    closeLogin();showGreeting();
+  }
+  document.getElementById('loginEnter').addEventListener('click',submitLogin);
+  loginInput.addEventListener('keydown',e=>{if(e.key==='Enter')submitLogin();});
+  document.getElementById('loginSkip').addEventListener('click',()=>{
+    store.set(SKIP_KEY,'1');closeLogin();
+  });
+  // pedir usuario solo si no hay uno guardado ni eligió entrar sin usuario
+  if(!store.get(USER_KEY)&&store.get(SKIP_KEY)!=='1')login.classList.add('show');
+  showGreeting();
+
+  // ocultar pantalla de carga
+  const loader=document.getElementById('loader');
+  const hideLoader=()=>loader&&loader.classList.add('hide');
+  window.addEventListener('load',()=>setTimeout(hideLoader,500));
+  setTimeout(hideLoader,4000); // fallback por si 'load' no dispara
+})();
+</script>
+</body>
+</html>
