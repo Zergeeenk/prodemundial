@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#eef1f7;
@@ -166,6 +167,31 @@
   .legal{text-align:center;font-size:11px;color:var(--muted);margin-top:24px;line-height:1.6}
   .legal b{color:var(--ink);font-weight:700}
 
+  /* ---------- MODO ADMIN ---------- */
+  .admin{display:none;background:var(--card);border:1px solid var(--blue-border);border-radius:16px;
+    padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .admin.show{display:block}
+  .admin h2{font-size:16px;font-weight:900;color:var(--ink);margin-bottom:4px}
+  .admin .ahint{font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.45}
+  .admin-match{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+  .admin-match .anames{flex:1 1 100%;font-size:12px;font-weight:700;color:var(--ink)}
+  .admin-match input{width:54px;height:36px;text-align:center;font-family:inherit;font-size:16px;font-weight:800;
+    color:var(--ink);border:1.5px solid var(--line);border-radius:9px;background:#fff}
+  .admin-match input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .admin-match .asep{font-weight:800;color:var(--muted)}
+  .admin-btn{border:none;border-radius:9px;background:var(--blue);color:#fff;font-family:inherit;
+    font-size:12.5px;font-weight:800;padding:10px 13px;cursor:pointer;transition:.15s}
+  .admin-btn:hover{background:var(--blue-dark)}
+  .admin-btn.sec{background:var(--blue-soft);color:var(--blue)}
+  .admin-btn.sec:hover{background:var(--blue-border)}
+  .amsg{font-size:11.5px;font-weight:700;color:var(--blue);margin:8px 0 0;min-height:14px}
+  .rank{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  .rank table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+  .rank th,.rank td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line)}
+  .rank th{color:var(--muted);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+  .rank td.num,.rank th.num{text-align:center}
+  .rank tbody tr:first-child td{font-weight:800;color:var(--ink)}
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important}
   }
@@ -197,6 +223,8 @@
     <h1 class="title">Prode <span>Argento!</span></h1>
     <p class="lede">Pronosticá cada partido de Argentina. <b>El debut ya está abierto</b>; el resto se abre el día del partido.</p>
   </div>
+
+  <div id="admin" class="admin"></div>
 
   <div id="summary" class="summary"></div>
 
@@ -233,10 +261,55 @@
   const WC_LEAGUE='4429';
   const results={};
 
-  const PREVIEW = new URLSearchParams(location.search).get('preview')==='1';
+  // ---------- SUPABASE (base de datos compartida) ----------
+  // La anon key es pública por diseño (la protege RLS). Se puede commitear sin problema.
+  const SUPABASE_URL='https://zweuocmktiafhjkjsxcy.supabase.co';
+  const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3ZXVvY21rdGlhZmhqa2pzeGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQ3MDgsImV4cCI6MjA5NzEzMDcwOH0.FC0DpnPVefZOL0XjJ3PIGExvkgZ7Zvmzx0Bl5qQ-COw';
+  // clave del modo admin: entrar con  ?admin=CLAVE  (cambiala por la que quieras)
+  const ADMIN_KEY='prodeargento2026';
+
+  const db = (window.supabase && /^https?:\/\//.test(SUPABASE_URL))
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+  const params = new URLSearchParams(location.search);
+  const PREVIEW = params.get('preview')==='1';
   const mem={};
   const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},
                set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
+  const currentUser=()=>store.get('prode_user');
+
+  // guardar la predicción del usuario en la base
+  async function dbSavePick(user,mid,h,a){
+    if(!db||!user)return;
+    try{ await db.from('picks').upsert(
+      {username:user,match_id:mid,home:h,away:a},{onConflict:'username,match_id'}); }
+    catch(e){ console.warn('dbSavePick',e); }
+  }
+  // traer las predicciones guardadas del usuario y reflejarlas en pantalla
+  async function dbLoadPicks(user){
+    if(!db||!user)return;
+    try{
+      const {data}=await db.from('picks').select('match_id,home,away').eq('username',user);
+      (data||[]).forEach(r=>{ if(state[r.match_id]){state[r.match_id].h=r.home;state[r.match_id].a=r.away;} });
+      MATCHES.forEach(m=>{
+        const sh=document.getElementById('sc-'+m.id+'-h'), sa=document.getElementById('sc-'+m.id+'-a');
+        if(sh)sh.textContent=state[m.id].h; if(sa)sa.textContent=state[m.id].a;
+        store.set('prode_'+m.id,JSON.stringify(state[m.id]));
+      });
+    }catch(e){ console.warn('dbLoadPicks',e); }
+  }
+  // resultados reales cargados por el admin (fuente prioritaria)
+  async function dbGetResults(){
+    if(!db)return {};
+    try{
+      const {data}=await db.from('results').select('match_id,home,away');
+      const out={}; (data||[]).forEach(r=>out[r.match_id]={h:r.home,a:r.away}); return out;
+    }catch(e){ console.warn('dbGetResults',e); return {}; }
+  }
+  async function checkAdminResults(){
+    const res=await dbGetResults();
+    MATCHES.forEach(m=>{ if(res[m.id]&&!results[m.id]) showResult(m,res[m.id]); });
+  }
 
   const state={};
   MATCHES.forEach(m=>{let s=null;try{s=JSON.parse(store.get('prode_'+m.id))}catch(e){}state[m.id]=s||{h:0,a:0}});
@@ -308,6 +381,8 @@
       store.set('prode_'+m,JSON.stringify(state[m]));
       setSteppers(m,state[m].saved);
       renderSaveBtn(m);
+      // al guardar, mandar la predicción a la base (si hay usuario)
+      if(state[m].saved) dbSavePick(currentUser(), m, state[m].h, state[m].a);
     });
     if(state[m].saved)setSteppers(m,true); // si ya venía guardada de antes, arranca bloqueada
     renderSaveBtn(m);
@@ -389,9 +464,79 @@
 
   freezeTick();setInterval(freezeTick,30000);
   tick();setInterval(tick,30000);
-  checkResults();setInterval(checkResults,90000);
+  // primero los resultados que cargó el admin (prioridad), después TheSportsDB para los que falten
+  (async()=>{ await checkAdminResults(); checkResults(); })();
+  setInterval(checkAdminResults,60000);
+  setInterval(checkResults,90000);
+  // traer las predicciones guardadas del usuario logueado (si las hay en la base)
+  dbLoadPicks(currentUser());
 
-  // ---------- LOGIN (usuario opcional, sin backend) ----------
+  // ---------- MODO ADMIN (?admin=CLAVE) ----------
+  const ADMIN = !!ADMIN_KEY && params.get('admin')===ADMIN_KEY;
+  function computeRanking(picks,res){
+    const byUser={};
+    picks.forEach(p=>{
+      const r=res[p.match_id]; if(!r)return;
+      const u=byUser[p.username]||(byUser[p.username]={user:p.username,exact:0,win:0,pts:0});
+      if(p.home===r.h&&p.away===r.a){u.exact++;u.pts+=3;}
+      else if(Math.sign(p.home-p.away)===Math.sign(r.h-r.a)){u.win++;u.pts+=1;}
+    });
+    return Object.values(byUser).sort((a,b)=>b.pts-a.pts||b.exact-a.exact||a.user.localeCompare(b.user));
+  }
+  async function renderRanking(){
+    const box=document.getElementById('rankBox');
+    if(!db){box.textContent='Supabase no configurado.';return;}
+    box.textContent='Cargando…';
+    try{
+      const r1=await db.from('picks').select('username,match_id,home,away');
+      const res=await dbGetResults();
+      const rows=computeRanking(r1.data||[],res);
+      if(!rows.length){box.innerHTML='<div class="ahint">Todavía no hay datos para rankear (faltan predicciones o resultados).</div>';return;}
+      box.innerHTML='<table><thead><tr><th class="num">#</th><th>Usuario</th>'+
+        '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th></tr></thead><tbody>'+
+        rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td></td>`+
+          `<td class="num">${r.exact}</td><td class="num">${r.win}</td><td class="num">${r.pts}</td></tr>`).join('')+
+        '</tbody></table>';
+      box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.children[1].textContent=rows[i].user;}); // evita inyección
+    }catch(e){box.textContent='Error: '+(e.message||e);}
+  }
+  async function saveAdminResult(mid){
+    const msg=document.getElementById('amsg');
+    if(!db){msg.textContent='Supabase no configurado.';return;}
+    const h=parseInt(document.getElementById('ar-'+mid+'-h').value,10);
+    const a=parseInt(document.getElementById('ar-'+mid+'-a').value,10);
+    if(isNaN(h)||isNaN(a)){msg.textContent='Completá los dos marcadores.';return;}
+    try{
+      await db.from('results').upsert({match_id:mid,home:h,away:a},{onConflict:'match_id'});
+      msg.textContent='Resultado guardado ✓ (ya lo ven todos)';
+      const m=MATCHES.find(x=>x.id===mid);
+      results[mid]=null; showResult(m,{h,a}); // refrescar la tarjeta al instante
+    }catch(e){msg.textContent='Error guardando: '+(e.message||e);}
+  }
+  async function initAdmin(){
+    const res=await dbGetResults();
+    const panel=document.getElementById('admin');
+    panel.innerHTML='<h2>🔐 Modo admin</h2>'+
+      '<div class="ahint">Cargá el resultado real de cada partido (lado izquierdo = primer equipo). '+
+      'Se guarda en la base y lo ven todos los jugadores.</div>'+
+      MATCHES.map(m=>{
+        const r=res[m.id]||{h:'',a:''};
+        return '<div class="admin-match"><div class="anames">'+m.md+': '+m.home+' vs '+m.away+'</div>'+
+          '<input type="number" min="0" max="50" id="ar-'+m.id+'-h" value="'+r.h+'" aria-label="'+m.home+'">'+
+          '<span class="asep">-</span>'+
+          '<input type="number" min="0" max="50" id="ar-'+m.id+'-a" value="'+r.a+'" aria-label="'+m.away+'">'+
+          '<button class="admin-btn" data-rm="'+m.id+'">Guardar resultado</button></div>';
+      }).join('')+
+      '<div class="amsg" id="amsg"></div>'+
+      '<div class="rank"><button class="admin-btn sec" id="loadRank">🏆 Ver ganadores</button>'+
+      '<div id="rankBox"></div></div>';
+    panel.classList.add('show');
+    panel.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>saveAdminResult(b.dataset.rm)));
+    document.getElementById('loadRank').addEventListener('click',renderRanking);
+  }
+  if(ADMIN) initAdmin();
+
+  // ---------- LOGIN (usuario opcional) ----------
   const USER_KEY='prode_user', SKIP_KEY='prode_user_skip';
   const login=document.getElementById('login');
   const greeting=document.getElementById('greeting');
@@ -415,6 +560,7 @@
     if(!v){loginInput.focus();return;}
     store.set(USER_KEY,v);store.set(SKIP_KEY,'');
     closeLogin();showGreeting();
+    dbLoadPicks(v); // traer de la base lo que ya tenga guardado ese usuario
   }
   document.getElementById('loginEnter').addEventListener('click',submitLogin);
   loginInput.addEventListener('keydown',e=>{if(e.key==='Enter')submitLogin();});

@@ -111,6 +111,40 @@ gratuita de TheSportsDB desde el navegador (CORS habilitado):
 > Verificación: al 14/06/2026 los 3 fixtures existen en la API con score vacío y
 > estado `NS`. El resultado real recién se puede ver cuando se juega cada partido.
 
+## Base de datos (Supabase) y modo admin
+
+> Nota: las secciones de arriba sobre **bono/modal "GANAMOS Y GANASTE", fichas,
+> `BONUS_URL`, `#testbonus` y el logo `Logo-bet.png`** quedaron **obsoletas**: se
+> quitaron al hacer el prode genérico (marca "Prode Argento!"). Hoy no hay promo de
+> casino ni logo.
+
+A partir de la integración con **Supabase** el prode dejó de ser 100% local: las
+predicciones y los resultados se guardan en una base compartida (sigue sin build,
+todo en el `.html`; el cliente entra por CDN `@supabase/supabase-js@2`).
+
+- **Config** (constantes arriba del `<script>`): `SUPABASE_URL`, `SUPABASE_KEY`
+  (anon key — es **pública por diseño**, la protege RLS, se puede commitear) y
+  `ADMIN_KEY` (clave del modo admin). `db` es el cliente, o `null` si no hay config.
+- **Setup**: correr `supabase-setup.sql` en *Supabase → SQL Editor*. Crea dos tablas
+  con RLS permisiva (anon puede leer/escribir; el admin se gatea en la app, no en la
+  base):
+  - `picks(username, match_id, home, away, updated_at)` — PK `(username, match_id)`.
+    `home`/`away` en **orientación de pantalla** (izq/der), igual que el pronóstico.
+  - `results(match_id, home, away, updated_at)` — PK `match_id`. La carga el admin.
+- **Por usuario**: al **Guardar predicción** se hace `upsert` a `picks`
+  (`dbSavePick`) solo si hay usuario logueado. Al loguearse o al cargar, `dbLoadPicks`
+  trae lo guardado de ese usuario y lo refleja (la base pisa lo local). Entrar **sin
+  usuario** sigue andando, pero no participa del ranking ni sincroniza.
+- **Resultados**: `checkAdminResults` lee la tabla `results` y tiene **prioridad**
+  sobre TheSportsDB (corre primero; `checkResults` completa los que falten). Cada 60 s.
+- **Modo admin**: se entra con `?admin=<ADMIN_KEY>` (default `prodeargento2026`).
+  Panel `#admin` con un input de marcador por partido (izq = primer equipo) +
+  "Guardar resultado" (`saveAdminResult` → `upsert` a `results`, refresca la tarjeta)
+  y "🏆 Ver ganadores" (`renderRanking` + `computeRanking`: **exacto = 3 pts, ganador
+  acertado = 1 pt**, ordena por puntos). Seguridad **best-effort**: la clave viaja en
+  la URL y está en el código; la RLS no distingue admin. Sirve para un prode entre
+  conocidos.
+
 ## Lógica de desbloqueo
 
 Función `isOpen(m)` decide si una tarjeta está abierta:
