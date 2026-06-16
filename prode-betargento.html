@@ -150,6 +150,12 @@
   .badge.exact{color:#fff;background:var(--blue);box-shadow:0 6px 16px -6px rgba(31,92,255,.6)}
   .badge.win{color:var(--blue);background:var(--blue-soft);border:1px solid var(--blue-border)}
   .badge.miss{color:var(--muted);background:#f1f3f8;border:1px solid var(--line)}
+  .result .finished{font-size:10.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .prizebtn{border:none;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:800;
+    color:#fff;padding:11px 20px;background:linear-gradient(135deg,#2f6bff,#1147d8);
+    box-shadow:0 10px 22px -10px rgba(31,92,255,.7);-webkit-tap-highlight-color:transparent;transition:.15s}
+  .prizebtn:hover{filter:brightness(1.06)}
+  .prizebtn:active{transform:translateY(1px)}
 
   /* ---------- AUTOGUARDADO (sin botón) ---------- */
   .autosave{text-align:center;margin-top:11px;font-size:11.5px;font-weight:700;color:var(--muted);
@@ -533,35 +539,38 @@
     results[m.id]=real;
     freezeMatch(m);
     const el=document.getElementById('rs-'+m.id);if(!el)return;
+    const played = !ADMIN_CTX && state[m.id].touched; // ¿este usuario jugó esta fecha?
     const p=state[m.id];
-    let cls,txt;
+    let cls='miss',txt='No acertaste';
     if(p.h===real.h&&p.a===real.a){cls='exact';txt='¡Acertaste el marcador!';}
     else if(Math.sign(p.h-p.a)===Math.sign(real.h-real.a)){cls='win';txt='Acertaste el ganador';}
-    else{cls='miss';txt='No acertaste';}
-    el.innerHTML=`<div class="real">Resultado real<b>${real.h} - ${real.a}</b></div><div class="badge ${cls}">${txt}</div>`;
-    el.classList.add('show');
+    let html='<div class="finished">⏹ Partido finalizado</div>'+
+             '<div class="real">Resultado real<b>'+real.h+' - '+real.a+'</b></div>';
+    if(played){
+      html+='<div class="badge '+cls+'">'+txt+'</div>'+
+            '<button class="prizebtn" type="button" data-cls="'+cls+'">🎁 Ver premio</button>';
+    }else{
+      html+='<div class="pending">No jugaste esta fecha</div>';
+    }
+    el.innerHTML=html; el.classList.add('show');
+    const pb=el.querySelector('.prizebtn'); if(pb) pb.addEventListener('click',()=>openResult(pb.dataset.cls));
     updateSummary();
-    // popups (solo jugadores que jugaron esa fecha; una vez por partido)
-    if(!ADMIN_CTX && state[m.id].touched){
-      const isFirst = m.id===MATCHES[0].id;
-      if(cls==='exact'){
-        const k='prode_won_'+m.id;
-        if(store.get(k)!=='1'){ store.set(k,'1'); openResult('win'); }   // ganaste 3000 fichas
-      }else if(isFirst){
-        const k='prode_end_'+m.id;
-        if(store.get(k)!=='1'){ store.set(k,'1'); openResult('wait'); }  // no se dio: esperá + 100%
-      }
+    // ventana emergente del premio (una vez por partido, solo si jugó)
+    if(played){
+      const k='prode_res_'+m.id;
+      if(store.get(k)!=='1'){ store.set(k,'1'); openResult(cls); }
     }
   }
   function updateSummary(){
-    const ids=Object.keys(results);if(!ids.length)return;
-    let exact=0,win=0;
-    MATCHES.forEach(m=>{const r=results[m.id];if(!r)return;const p=state[m.id];
-      if(p.h===r.h&&p.a===r.a)exact++;else if(Math.sign(p.h-p.a)===Math.sign(r.h-r.a))win++;});
+    const jugados=MATCHES.filter(m=>results[m.id] && !ADMIN_CTX && state[m.id].touched);
     const s=document.getElementById('summary');
+    if(!jugados.length){s.classList.remove('show');return;}
+    let exact=0,win=0;
+    jugados.forEach(m=>{const r=results[m.id],p=state[m.id];
+      if(p.h===r.h&&p.a===r.a)exact++;else if(Math.sign(p.h-p.a)===Math.sign(r.h-r.a))win++;});
     s.innerHTML=`<b>${exact}</b> marcador${exact===1?'':'es'} exacto${exact===1?'':'s'} · `+
                 `<b>${win}</b> ganador${win===1?'':'es'} acertado${win===1?'':'s'} `+
-                `<span>de ${ids.length} jugado${ids.length===1?'':'s'}</span>`;
+                `<span>de ${jugados.length} jugado${jugados.length===1?'':'s'}</span>`;
     s.classList.add('show');
   }
 
@@ -684,7 +693,7 @@
     try{
       await db.from('results').delete().eq('match_id',mid);
       delete results[mid];
-      store.set('prode_won_'+mid,''); // permitir que el popup vuelva a saltar si se recarga el resultado
+      store.set('prode_res_'+mid,''); // permitir que el popup vuelva a saltar si se recarga el resultado
       const el=document.getElementById('rs-'+mid); if(el){el.innerHTML='';el.classList.remove('show');}
       const ih=document.getElementById('ar-'+mid+'-h'),ia=document.getElementById('ar-'+mid+'-a');
       if(ih)ih.value=''; if(ia)ia.value='';
@@ -799,24 +808,30 @@
   const winModal=document.getElementById('winModal');
   const winCard=document.getElementById('winCard');
   const winBody=document.getElementById('winBody');
-  function openResult(kind){
-    if(kind==='win'){
-      winCard.classList.add('bono-card');
-      winBody.innerHTML=
-        '<div class="bono-badge">★ Ganaste ★</div>'+
-        '<div class="modal-emoji">🎉🎰🎉</div>'+
-        '<div class="bono-kicker">¡Le pegaste al resultado!</div>'+
-        '<div class="bono-big">3000</div>'+
-        '<div class="bono-sub">fichas gratis</div>'+
-        '<div class="modal-cta">📸 Sacale captura y mandala al webchat para reclamarlas</div>';
-    }else{
-      winCard.classList.remove('bono-card');
-      winBody.innerHTML=
-        '<div class="modal-emoji">⏳⚽</div>'+
-        '<div class="bono-kicker">¡Gracias por jugar!</div>'+
-        '<div class="bono-by" style="font-size:14px;margin-bottom:14px">Esta no se dio… seguí atento a los resultados de los próximos partidos.</div>'+
-        '<div class="modal-cta">🎁 Igual tenés tu <b>100% de bono por participar</b> · sacale captura y mandalo al webchat</div>';
+  // cls 'exact' -> 3000 fichas ; 'win' -> 200% ; 'miss' -> 100% por participar
+  function openResult(cls){
+    let badge,emoji,kicker,big,sub,cta;
+    if(cls==='exact'){
+      badge='★ Ganaste ★'; emoji='🎉🎰🎉'; kicker='¡Le pegaste al resultado!';
+      big='3000'; sub='fichas gratis';
+      cta='📸 Sacale captura y mandala al webchat para reclamarlas';
+    }else if(cls==='win'){
+      badge='★ Acertaste el ganador ★'; emoji='🎉⚽🎉'; kicker='¡Bien ahí!';
+      big='200%'; sub='de bono en tu carga';
+      cta='📸 Sacale captura y mandala al webchat para reclamarlo';
+    }else{ // miss
+      badge='★ Premio por participar ★'; emoji='🎁'; kicker='¡Gracias por jugar!';
+      big='100%'; sub='de bono en tu carga';
+      cta='📸 Sacale captura y mandala al webchat para reclamarlo';
     }
+    winCard.classList.add('bono-card');
+    winBody.innerHTML=
+      '<div class="bono-badge">'+badge+'</div>'+
+      '<div class="modal-emoji">'+emoji+'</div>'+
+      '<div class="bono-kicker">'+kicker+'</div>'+
+      '<div class="bono-big">'+big+'</div>'+
+      '<div class="bono-sub">'+sub+'</div>'+
+      '<div class="modal-cta">'+cta+'</div>';
     winModal.classList.add('show');winModal.setAttribute('aria-hidden','false');
   }
   function closeWin(){winModal.classList.remove('show');winModal.setAttribute('aria-hidden','true');}
