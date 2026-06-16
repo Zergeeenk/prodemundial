@@ -232,6 +232,28 @@
     font-weight:800;font-size:15px;padding:13px;border-radius:12px;transition:.15s}
   .modal-btn:hover{background:#eaf0ff}
 
+  /* ---------- MODAL DE BONO (festivo / exclusivo) ---------- */
+  .bono-card{padding:30px 24px 24px;
+    background:radial-gradient(120% 80% at 50% 0%,#3f7bff 0%,#1147d8 55%,#0b2f9e 100%);
+    box-shadow:0 30px 70px -18px rgba(11,47,158,.9),0 0 0 1px rgba(255,255,255,.06) inset;
+    animation:modalPop .32s cubic-bezier(.2,.9,.3,1.3),bonoHalo 2.4s ease-in-out infinite}
+  @keyframes bonoHalo{0%,100%{box-shadow:0 30px 70px -18px rgba(11,47,158,.9),0 0 0 1px rgba(255,255,255,.06) inset}
+    50%{box-shadow:0 30px 90px -10px rgba(255,206,70,.55),0 0 0 1px rgba(255,215,107,.4) inset}}
+  .bono-badge{display:inline-block;font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;
+    color:#5a3d00;background:linear-gradient(135deg,#ffe79a,#ffc83f);padding:6px 16px;border-radius:999px;
+    box-shadow:0 8px 20px -6px rgba(255,200,60,.85);margin-bottom:12px;
+    animation:badgeGlow 1.6s ease-in-out infinite}
+  @keyframes badgeGlow{0%,100%{transform:scale(1);box-shadow:0 8px 20px -6px rgba(255,200,60,.6)}
+    50%{transform:scale(1.06);box-shadow:0 10px 28px -4px rgba(255,200,60,1)}}
+  .bono-card .modal-emoji{font-size:46px;margin-bottom:10px}
+  .bono-kicker{font-size:16px;font-weight:800;letter-spacing:.3px;opacity:.96;margin-bottom:4px}
+  .bono-big{font-size:68px;font-weight:900;line-height:1;color:#ffd76b;letter-spacing:-1.5px;margin:6px 0 2px;
+    text-shadow:0 8px 24px rgba(0,0,0,.3);animation:bigPop .55s cubic-bezier(.2,.9,.3,1.6) both}
+  @keyframes bigPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+  .bono-sub{font-size:18px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+  .bono-by{font-size:12.5px;font-weight:600;opacity:.9;margin-bottom:18px}
+  .bono-card .modal-cta{margin:0}
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important}
   }
@@ -290,11 +312,15 @@
 </div>
 
 <div id="bonoModal" class="modal" aria-hidden="true">
-  <div class="modal-card">
+  <div class="modal-card bono-card">
     <button class="modal-x" id="bonoClose" aria-label="cerrar">×</button>
-    <div class="modal-emoji">🎁</div>
-    <h2 class="modal-title">¡Por participar ganaste un bono de 100% en tu carga!</h2>
-    <div class="modal-cta">📸 Sacale captura y mandala al webchat</div>
+    <div class="bono-badge">★ Premio exclusivo ★</div>
+    <div class="modal-emoji">🎉🎁🎉</div>
+    <div class="bono-kicker">¡Felicitaciones, ganaste!</div>
+    <div class="bono-big">100%</div>
+    <div class="bono-sub">de bono en tu carga</div>
+    <div class="bono-by">Solo por participar del prode</div>
+    <div class="modal-cta">📸 Sacale captura y mandala al webchat para reclamarlo</div>
   </div>
 </div>
 
