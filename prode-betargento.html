@@ -478,10 +478,14 @@
   }
   // PREMIO PARTICIPAR: cuando el usuario dejó pronóstico en las 3 fechas (una sola vez por usuario)
   const allTouched=()=>MATCHES.every(m=>state[m.id]&&state[m.id].touched);
+  let bonoTimer=null;
   function checkAllDone(){
     if(ADMIN_CTX || !currentUser() || !allTouched())return;
     const k='prode_bono_done_'+currentUser();
-    if(store.get(k)!=='1'){ store.set(k,'1'); openBono(); }
+    if(store.get(k)==='1')return;
+    // esperar ~3s (y reiniciar con cada cambio) para no saltar antes de terminar el último
+    clearTimeout(bonoTimer);
+    bonoTimer=setTimeout(()=>{ if(store.get(k)==='1')return; store.set(k,'1'); openBono(); },3000);
   }
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.addEventListener('click',()=>{
