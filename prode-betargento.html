@@ -197,7 +197,11 @@
   .rank td.prize{font-weight:800;white-space:nowrap}
   .rank td.p-top{color:#b8860b}   /* 3000 fichas */
   .rank td.p-mid{color:var(--blue)} /* 200% */
-  .rank td.p-low{color:var(--muted)} /* 100% */
+  .rank td.p-low{color:var(--muted)} /* 50% */
+  .claimbtn{border:1px solid var(--blue-border);background:var(--blue-soft);color:var(--blue);font-family:inherit;
+    font-size:11px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.12s}
+  .claimbtn:hover{background:var(--blue-border)}
+  .claimbtn.on{background:#e8f7ee;border-color:#bfe6cc;color:#1f9d57}
   .rank td.ok{color:var(--blue);font-weight:800}      /* marcador exacto */
   .rank td.half{color:var(--ink);font-weight:700}     /* acertó el ganador */
   .rank .leg{font-size:10.5px;color:var(--muted);margin-top:6px}
@@ -441,6 +445,10 @@
     try{ const {data}=await db.from('claims').select('username,claimed_at').order('claimed_at',{ascending:true}); return data||[]; }
     catch(e){ console.warn('dbGetClaims',e); return []; }
   }
+  async function dbUnclaim(user){
+    if(!db||!user)return;
+    try{ await db.from('claims').delete().eq('username',user); }catch(e){ console.warn('dbUnclaim',e); }
+  }
   // si el usuario ya reclamó (en cualquier dispositivo), marcarlo para que NO le vuelva a salir
   async function refreshClaimed(){
     const u=currentUser(); if(!db||!u)return;
@@ -655,18 +663,26 @@
     try{
       const r1=await db.from('picks').select('username,match_id,home,away');
       const res=await dbGetResults();
+      const claimed=new Set((await dbGetClaims()).map(c=>c.username));
       const rows=computeRanking(r1.data||[],res);
       if(!rows.length){box.innerHTML='<div class="ahint">Todavía no hay ganadores (faltan predicciones o cargar resultados).</div>';return;}
       const prizeOf=r=> r.exact>0 ? {t:(r.exact>1?r.exact+'× ':'')+'3000 fichas',c:'p-top'}
                       : r.win>0   ? {t:'200% bono',c:'p-mid'}
-                                  : {t:'100% bono',c:'p-low'};
+                                  : {t:'50% bono',c:'p-low'};
       box.innerHTML='<table><thead><tr><th class="num">#</th><th>Usuario</th>'+
-        '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th><th>Premio</th></tr></thead><tbody>'+
-        rows.map((r,i)=>{const p=prizeOf(r);return `<tr><td class="num">${i+1}</td><td></td>`+
+        '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th><th>Premio</th><th>Reclamo</th></tr></thead><tbody>'+
+        rows.map((r,i)=>{const p=prizeOf(r);const cl=claimed.has(r.user);
+          return `<tr><td class="num">${i+1}</td><td></td>`+
           `<td class="num">${r.exact}</td><td class="num">${r.win}</td><td class="num">${r.pts}</td>`+
-          `<td class="prize ${p.c}">${p.t}</td></tr>`;}).join('')+
+          `<td class="prize ${p.c}">${p.t}</td>`+
+          `<td><button class="claimbtn ${cl?'on':''}" data-i="${i}">${cl?'✓ Reclamado':'Marcar'}</button></td></tr>`;}).join('')+
         '</tbody></table>';
       box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.children[1].textContent=rows[i].user;}); // evita inyección
+      box.querySelectorAll('.claimbtn').forEach(b=>b.addEventListener('click',async()=>{
+        const u=rows[+b.dataset.i].user;
+        if(claimed.has(u)) await dbUnclaim(u); else await dbClaim(u);
+        renderRanking(); renderClaims();
+      }));
     }catch(e){box.textContent='Error: '+(e.message||e);}
   }
   // lista de TODOS los participantes con sus pronósticos por partido
@@ -868,7 +884,7 @@
       cta='📸 Sacale captura y mandala al webchat para reclamarlo';
     }else{ // miss
       badge='★ Premio por participar ★'; emoji='🎁'; kicker='¡Gracias por jugar!';
-      big='100%'; sub='de bono en tu carga';
+      big='50%'; sub='de bono en tu carga';
       cta='📸 Sacale captura y mandala al webchat para reclamarlo';
     }
     winCard.classList.add('bono-card');
