@@ -21,10 +21,13 @@ create table if not exists public.results (
   updated_at timestamptz not null default now()
 );
 
--- Reclamos del bono por participar: una fila por usuario que lo reclamó
+-- Reclamos de bonos: una fila por (usuario, tipo de bono)
+--   kind: 'participar' | 'm1' | 'm2' | 'm3'
 create table if not exists public.claims (
-  username   text primary key,
-  claimed_at timestamptz not null default now()
+  username   text not null,
+  kind       text not null,
+  claimed_at timestamptz not null default now(),
+  primary key (username, kind)
 );
 
 -- ------------------------------------------------------------

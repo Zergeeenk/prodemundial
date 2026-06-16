@@ -197,11 +197,31 @@
   .rank td.prize{font-weight:800;white-space:nowrap}
   .rank td.p-top{color:#b8860b}   /* 3000 fichas */
   .rank td.p-mid{color:var(--blue)} /* 200% */
-  .rank td.p-low{color:var(--muted)} /* 50% */
+  .rank td.p-low{color:var(--muted)} /* 50% consuelo */
+  .rank td.p-part{color:#7a3df5} /* participar 100% */
   .claimbtn{border:1px solid var(--blue-border);background:var(--blue-soft);color:var(--blue);font-family:inherit;
-    font-size:11px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.12s}
+    font-size:11px;font-weight:800;padding:6px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.12s;margin-top:5px}
   .claimbtn:hover{background:var(--blue-border)}
   .claimbtn.on{background:#e8f7ee;border-color:#bfe6cc;color:#1f9d57}
+
+  /* tabla de control de bonos (admin) */
+  .ctrl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .ctrl th,.ctrl td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+  .ctrl th:first-child,.ctrl td:first-child{text-align:left}
+  .ctrl thead th{color:var(--ink);font-weight:800;font-size:11.5px}
+  .ctrl .th-sub{font-size:9.5px;font-weight:600;color:var(--muted);margin-top:2px}
+  .ctrl td.muted{color:var(--muted);font-size:11px}
+  .ctrl .prize{font-weight:800}
+  .ctrl td.p-top,.ctrl .prize.p-top{color:#b8860b}
+  .ctrl .prize.p-mid{color:var(--blue)}
+  .ctrl .prize.p-low{color:var(--muted)}
+  .ctrl .prize.p-part{color:#7a3df5}
+
+  /* en modo admin: pantalla completa y solo el panel */
+  body.admin-mode .wrap{max-width:1100px}
+  body.admin-mode .hero,body.admin-mode #bono,body.admin-mode #summary,
+  body.admin-mode #matches,body.admin-mode .legal{display:none}
+  body.admin-mode .admin{margin-top:8px}
   .rank td.ok{color:var(--blue);font-weight:800}      /* marcador exacto */
   .rank td.half{color:var(--ink);font-weight:700}     /* acertó el ganador */
   .rank .leg{font-size:10.5px;color:var(--muted);margin-top:6px}
@@ -433,25 +453,25 @@
     const res=await dbGetResults();
     MATCHES.forEach(m=>{ if(res[m.id]&&!results[m.id]) showResult(m,res[m.id]); });
   }
-  // ---------- RECLAMOS DEL BONO (para que el admin vea quién lo reclamó) ----------
-  async function dbClaim(user){
+  // ---------- RECLAMOS DEL BONO (por tipo: participar / m1 / m2 / m3) ----------
+  async function dbClaim(user,kind){
     if(!db||!user)return;
-    try{ await db.from('claims').upsert({username:user},{onConflict:'username'}); }
+    try{ await db.from('claims').upsert({username:user,kind:kind},{onConflict:'username,kind'}); }
     catch(e){ console.warn('dbClaim',e); }
   }
   async function dbGetClaims(){
     if(!db)return [];
-    try{ const {data}=await db.from('claims').select('username,claimed_at').order('claimed_at',{ascending:true}); return data||[]; }
+    try{ const {data}=await db.from('claims').select('username,kind,claimed_at'); return data||[]; }
     catch(e){ console.warn('dbGetClaims',e); return []; }
   }
-  async function dbUnclaim(user){
+  async function dbUnclaim(user,kind){
     if(!db||!user)return;
-    try{ await db.from('claims').delete().eq('username',user); }catch(e){ console.warn('dbUnclaim',e); }
+    try{ await db.from('claims').delete().eq('username',user).eq('kind',kind); }catch(e){ console.warn('dbUnclaim',e); }
   }
-  // si el usuario ya reclamó (en cualquier dispositivo), marcarlo para que NO le vuelva a salir
+  // si el admin ya le marcó el bono de PARTICIPAR, que NO le vuelva a salir el popup
   async function refreshClaimed(){
     const u=currentUser(); if(!db||!u)return;
-    try{ const {data}=await db.from('claims').select('username').eq('username',u);
+    try{ const {data}=await db.from('claims').select('kind').eq('username',u).eq('kind','participar');
       if(data&&data.length) store.set('prode_bono_done_'+u,'1'); }catch(e){}
   }
 
@@ -646,91 +666,57 @@
 
   // ---------- MODO ADMIN ----------
   // Se entra con ?admin (pide la clave) o ?admin=CLAVE (entra directo). No pide usuario.
-  function computeRanking(picks,res){
-    const byUser={};
-    picks.forEach(p=>{
-      const r=res[p.match_id]; if(!r)return;
-      const u=byUser[p.username]||(byUser[p.username]={user:p.username,exact:0,win:0,pts:0});
-      if(p.home===r.h&&p.away===r.a){u.exact++;u.pts+=3;}
-      else if(Math.sign(p.home-p.away)===Math.sign(r.h-r.a)){u.win++;u.pts+=1;}
-    });
-    return Object.values(byUser).sort((a,b)=>b.pts-a.pts||b.exact-a.exact||a.user.localeCompare(b.user));
+  // tipo de premio de un pick contra el resultado real
+  function tierOf(pk,r){
+    if(!r) return null;                                            // sin resultado todavía
+    if(pk.h===r.h&&pk.a===r.a) return {t:'3000 fichas',c:'p-top'}; // marcador exacto
+    if(Math.sign(pk.h-pk.a)===Math.sign(r.h-r.a)) return {t:(r.h===r.a?'200% (empate)':'200% (ganador)'),c:'p-mid'};
+    return {t:'50% consuelo',c:'p-low'};                           // jugó pero falló
   }
-  async function renderRanking(){
-    const box=document.getElementById('rankBox');
+  function ctrlCell(i,kind,tier,claimed,extra){
+    const sub = extra ? '<div class="th-sub">'+extra+'</div>' : '';
+    return '<td><div class="prize '+tier.c+'">'+tier.t+'</div>'+sub+
+      '<button class="claimbtn '+(claimed?'on':'')+'" data-i="'+i+'" data-kind="'+kind+'">'+(claimed?'✓ Dado':'Marcar')+'</button></td>';
+  }
+  // TABLA DE CONTROL: un bono por columna (participar + las 3 fechas), marcable por usuario
+  async function renderControl(){
+    const box=document.getElementById('ctrlBox'); if(!box)return;
     if(!db){box.textContent='Supabase no configurado.';return;}
     box.textContent='Cargando…';
     try{
-      const r1=await db.from('picks').select('username,match_id,home,away');
+      const picks=(await db.from('picks').select('username,match_id,home,away')).data||[];
       const res=await dbGetResults();
-      const claimed=new Set((await dbGetClaims()).map(c=>c.username));
-      const rows=computeRanking(r1.data||[],res);
-      if(!rows.length){box.innerHTML='<div class="ahint">Todavía no hay ganadores (faltan predicciones o cargar resultados).</div>';return;}
-      const prizeOf=r=> r.exact>0 ? {t:(r.exact>1?r.exact+'× ':'')+'3000 fichas',c:'p-top'}
-                      : r.win>0   ? {t:'200% bono',c:'p-mid'}
-                                  : {t:'50% bono',c:'p-low'};
-      box.innerHTML='<table><thead><tr><th class="num">#</th><th>Usuario</th>'+
-        '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th><th>Premio</th><th>Reclamo</th></tr></thead><tbody>'+
-        rows.map((r,i)=>{const p=prizeOf(r);const cl=claimed.has(r.user);
-          return `<tr><td class="num">${i+1}</td><td></td>`+
-          `<td class="num">${r.exact}</td><td class="num">${r.win}</td><td class="num">${r.pts}</td>`+
-          `<td class="prize ${p.c}">${p.t}</td>`+
-          `<td><button class="claimbtn ${cl?'on':''}" data-i="${i}">${cl?'✓ Reclamado':'Marcar'}</button></td></tr>`;}).join('')+
-        '</tbody></table>';
-      box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.children[1].textContent=rows[i].user;}); // evita inyección
+      const claimed=new Set((await dbGetClaims()).map(c=>c.username+'|'+c.kind));
+      if(!picks.length){box.innerHTML='<div class="ahint">Todavía no jugó nadie.</div>';return;}
+      const byUser={};
+      picks.forEach(p=>{(byUser[p.username]||(byUser[p.username]={}))[p.match_id]={h:p.home,a:p.away};});
+      const users=Object.keys(byUser).sort((a,b)=>a.localeCompare(b));
+      let html='<table class="ctrl"><thead><tr><th>Usuario</th><th>Bono x participar</th>'+
+        MATCHES.map(m=>'<th>Bono '+m.md.split(' · ')[0]+'<div class="th-sub">'+m.home+' vs '+m.away+'</div></th>').join('')+
+        '</tr></thead><tbody>';
+      html+=users.map((u,i)=>{
+        let row='<tr><td class="uname"></td>';
+        row+=ctrlCell(i,'participar',{t:'100%',c:'p-part'},claimed.has(u+'|participar'));
+        MATCHES.forEach(m=>{
+          const pk=byUser[u][m.id];
+          if(!pk){ row+='<td class="muted">no jugó</td>'; return; }
+          const tier=tierOf(pk,res[m.id]);
+          if(!tier){ row+='<td class="muted">'+pk.h+'-'+pk.a+'<div class="th-sub">sin resultado</div></td>'; return; }
+          row+=ctrlCell(i,m.id,tier,claimed.has(u+'|'+m.id),pk.h+'-'+pk.a);
+        });
+        return row+'</tr>';
+      }).join('');
+      html+='</tbody></table><div class="leg">Total: <b>'+users.length+'</b> jugadores · tocá <b>Marcar</b> cuando le entregaste ese bono</div>';
+      box.innerHTML=html;
+      box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.querySelector('.uname').textContent=users[i];}); // evita inyección
       box.querySelectorAll('.claimbtn').forEach(b=>b.addEventListener('click',async()=>{
-        const u=rows[+b.dataset.i].user;
-        if(claimed.has(u)) await dbUnclaim(u); else await dbClaim(u);
-        renderRanking(); renderClaims();
+        const u=users[+b.dataset.i], kind=b.dataset.kind;
+        if(claimed.has(u+'|'+kind)) await dbUnclaim(u,kind); else await dbClaim(u,kind);
+        renderControl();
       }));
     }catch(e){box.textContent='Error: '+(e.message||e);}
   }
-  // lista de TODOS los participantes con sus pronósticos por partido
-  async function renderParticipants(){
-    const box=document.getElementById('partBox');
-    if(!db){box.textContent='Supabase no configurado.';return;}
-    box.textContent='Cargando…';
-    try{
-      const r1=await db.from('picks').select('username,match_id,home,away');
-      const res=await dbGetResults();
-      const rows=r1.data||[];
-      if(!rows.length){box.innerHTML='<div class="ahint">Todavía no jugó nadie.</div>';return;}
-      const byUser={};
-      rows.forEach(p=>{(byUser[p.username]||(byUser[p.username]={}))[p.match_id]={h:p.home,a:p.away};});
-      const users=Object.keys(byUser).sort((a,b)=>a.localeCompare(b));
-      const head=MATCHES.map(m=>'<th class="num">'+m.md.replace('Fecha ','F').split(' · ')[0]+'</th>').join('');
-      let html='<table><thead><tr><th>Usuario</th>'+head+'<th class="num">Pts</th></tr></thead><tbody>';
-      html+=users.map(u=>{
-        let pts=0;
-        const cells=MATCHES.map(m=>{
-          const pk=byUser[u][m.id];
-          if(!pk)return '<td class="num">—</td>';
-          let cls='num';const r=res[m.id];
-          if(r){ if(pk.h===r.h&&pk.a===r.a){pts+=3;cls+=' ok';}
-                 else if(Math.sign(pk.h-pk.a)===Math.sign(r.h-r.a)){pts+=1;cls+=' half';} }
-          return '<td class="'+cls+'">'+pk.h+'-'+pk.a+'</td>';
-        }).join('');
-        return '<tr><td class="uname"></td>'+cells+'<td class="num">'+pts+'</td></tr>';
-      }).join('');
-      html+='</tbody></table>'+
-        '<div class="leg">Total: <b>'+users.length+'</b> participantes · <b>azul</b> = marcador exacto · <b>negrita</b> = acertó ganador</div>';
-      box.innerHTML=html;
-      box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.querySelector('.uname').textContent=users[i];}); // evita inyección
-    }catch(e){box.textContent='Error: '+(e.message||e);}
-  }
-  function refreshAdmin(){ renderRanking(); renderParticipants(); renderClaims(); }
-  async function renderClaims(){
-    const box=document.getElementById('claimBox'); if(!box)return;
-    if(!db){box.textContent='Supabase no configurado.';return;}
-    box.textContent='Cargando…';
-    const data=await dbGetClaims();
-    if(!data.length){box.innerHTML='<div class="ahint">Nadie reclamó el bono todavía.</div>';return;}
-    box.innerHTML='<table><thead><tr><th>Usuario</th><th class="num">Reclamó</th></tr></thead><tbody>'+
-      data.map(()=>'<tr><td class="uname"></td><td class="num cdate"></td></tr>').join('')+'</tbody></table>'+
-      '<div class="leg">Total: <b>'+data.length+'</b> reclamaron el bono por participar</div>';
-    const trs=box.querySelectorAll('tbody tr');
-    data.forEach((c,i)=>{ trs[i].querySelector('.uname').textContent=c.username; trs[i].querySelector('.cdate').textContent=(c.claimed_at||'').slice(0,10); });
-  }
+  function refreshAdmin(){ renderControl(); }
   async function saveAdminResult(mid){
     const msg=document.getElementById('amsg');
     if(!db){msg.textContent='Supabase no configurado.';return;}
@@ -775,10 +761,8 @@
           '<button class="admin-btn del" data-del="'+m.id+'">Borrar</button></div>';
       }).join('')+
       '<div class="amsg" id="amsg"></div>'+
-      '<div class="rank"><div class="rank-h"><b>🏆 Ganadores</b>'+
-      '<button class="admin-btn sec" id="refreshAll">↻ Actualizar</button></div><div id="rankBox"></div></div>'+
-      '<div class="rank"><b>👥 Todos los participantes</b><div id="partBox"></div></div>'+
-      '<div class="rank"><b>🎁 Bonos reclamados</b><div id="claimBox"></div></div>';
+      '<div class="rank"><div class="rank-h"><b>🎁 Control de bonos</b>'+
+      '<button class="admin-btn sec" id="refreshAll">↻ Actualizar</button></div><div id="ctrlBox"></div></div>';
     panel.classList.add('show');
     panel.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>saveAdminResult(b.dataset.rm)));
     panel.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteAdminResult(b.dataset.del)));
@@ -788,7 +772,7 @@
 
   // gate por clave: en modo admin NO se pide usuario, se pide la clave de admin
   const adminGate=document.getElementById('adminGate');
-  function unlockAdmin(){ adminGate.classList.remove('show'); initAdmin(); }
+  function unlockAdmin(){ adminGate.classList.remove('show'); document.body.classList.add('admin-mode'); initAdmin(); }
   function tryAdminKey(v){
     if(v===ADMIN_KEY){ unlockAdmin(); }
     else { document.getElementById('adminGateMsg').textContent='Clave incorrecta'; }
