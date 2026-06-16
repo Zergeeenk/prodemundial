@@ -82,13 +82,14 @@ gratuita de TheSportsDB desde el navegador (CORS habilitado):
   pasó. Cuando hay resultado, `showResult()` lo pinta y compara contra el pronóstico:
   **`exact`** (marcador exacto → badge azul lleno), **`win`** (acertó el ganador →
   badge azul claro) o **`miss`** (gris). `updateSummary()` actualiza `#summary`.
-- **Congelado:** cada match tiene `kickoff` (hora del partido). El pronóstico se
-  **cierra 10 minutos antes** (`LOCK_LEAD_MS`/`lockTime(m)`): `freezeTick()` (cada
-  30 s) deshabilita los `+/-`, oculta el botón Guardar, **fija la predicción
-  (`saved=true`) y la guarda en Supabase** (`dbSavePick`) y muestra "Pronóstico
-  cerrado y guardado · esperando resultado…". Hasta ese momento es editable. Es
-  integridad best-effort en el cliente (sin cron/backend, el cierre solo corre si el
-  usuario tiene la página abierta; pero al guardar/editar ya se persiste en la base).
+- **Congelado + EN VIVO:** cada match tiene `kickoff`. El pronóstico se **cierra 1 min
+  antes** (`LOCK_LEAD_MS=60s`/`lockTime(m)`): `freezeTick()` (cada 30 s) deshabilita
+  los `+/-` y persiste en Supabase. `statusTick()` muestra el estado de la tarjeta sin
+  resultado: entre `lockTime` y `kickoff` → "🔒 Pronóstico cerrado · ya arranca";
+  desde `kickoff` hasta que llega el resultado → badge **"🔴 EN VIVO · jugándose"**
+  (`.live` con punto pulsante). Al llegar el resultado, `showResult` pinta el
+  finalizado. Best-effort en el cliente (el cierre solo corre con la página abierta;
+  pero al editar ya se persiste en la base).
 - **Bono + modal:** al acertar el **marcador exacto** (`cls==='exact'`) se muestra el
   banner `.bonus` ("Sacale captura y mandala al webchat") y salta la **ventana
   emergente** `#winModal` ("¡GANAMOS Y GANASTE! · 200% · +1500 fichas") vía `openWin()`.

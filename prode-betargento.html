@@ -146,6 +146,12 @@
   .result .real{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
   .result .real b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:1px;margin-left:8px;vertical-align:-2px}
   .result .pending{font-size:12px;font-weight:600;color:var(--muted)}
+  .result .live{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;
+    color:#e0245e;background:#ffe9ef;border:1px solid #ffc9d8;border-radius:999px;padding:7px 14px;
+    letter-spacing:.5px;text-transform:uppercase}
+  .result .live .dot{width:9px;height:9px;border-radius:50%;background:#e0245e;
+    animation:livePulse 1s ease-in-out infinite}
+  @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}
   .badge{font-size:13px;font-weight:800;letter-spacing:.3px;padding:8px 16px;border-radius:999px}
   .badge.exact{color:#fff;background:var(--blue);box-shadow:0 6px 16px -6px rgba(31,92,255,.6)}
   .badge.win{color:var(--blue);background:var(--blue-soft);border:1px solid var(--blue-border)}
@@ -582,8 +588,8 @@
       if(diff===0)location.reload();
     });
   }
-  // el pronóstico se cierra 10 minutos ANTES del kickoff
-  const LOCK_LEAD_MS=10*60*1000;
+  // el pronóstico se cierra justo antes del kickoff (1 min): si juega 22:00, a las 21:59 ya no se edita
+  const LOCK_LEAD_MS=60*1000;
   const lockTime=m=>m.kickoff.getTime()-LOCK_LEAD_MS;
   // congelar el pronóstico: bloquea edición y deja la predicción guardada (local + Supabase)
   function freezeMatch(m){
@@ -594,12 +600,23 @@
     const as=document.getElementById('as-'+m.id);if(as)as.style.display='none';
     // al cerrarse, asegurar el guardado en la base (solo si el usuario jugó esta fecha)
     if(state[m.id].touched){ store.set('prode_'+m.id,JSON.stringify(state[m.id])); dbSavePick(currentUser(), m.id, state[m.id].h, state[m.id].a); }
-    if(!results[m.id]){
-      const el=document.getElementById('rs-'+m.id);
-      if(el){el.innerHTML='<div class="pending">🔒 Pronóstico cerrado y guardado · esperando resultado…</div>';el.classList.add('show');}
-    }
   }
-  function freezeTick(){MATCHES.forEach(m=>{if(Date.now()>=lockTime(m))freezeMatch(m);});}
+  // estado de la tarjeta sin resultado: cerrado (por arrancar) -> EN VIVO (jugándose)
+  function statusTick(){
+    MATCHES.forEach(m=>{
+      if(results[m.id])return; // ya finalizó: el resultado lo pone showResult
+      const el=document.getElementById('rs-'+m.id);if(!el)return;
+      const now=Date.now();
+      if(now>=m.kickoff.getTime()){
+        if(el.dataset.st!=='live'){el.dataset.st='live';
+          el.innerHTML='<div class="live"><span class="dot"></span>EN VIVO · jugándose</div>';el.classList.add('show');}
+      }else if(now>=lockTime(m)){
+        if(el.dataset.st!=='locked'){el.dataset.st='locked';
+          el.innerHTML='<div class="pending">🔒 Pronóstico cerrado · ya arranca</div>';el.classList.add('show');}
+      }
+    });
+  }
+  function freezeTick(){MATCHES.forEach(m=>{if(Date.now()>=lockTime(m))freezeMatch(m);});statusTick();}
 
   // mostrar el resultado real y compararlo con el pronóstico
   function showResult(m,real){
