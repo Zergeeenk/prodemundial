@@ -151,15 +151,10 @@
   .badge.win{color:var(--blue);background:var(--blue-soft);border:1px solid var(--blue-border)}
   .badge.miss{color:var(--muted);background:#f1f3f8;border:1px solid var(--line)}
 
-  /* ---------- GUARDAR (botón por tarjeta) ---------- */
-  .savebtn{width:100%;margin-top:11px;border:none;border-radius:11px;cursor:pointer;
-    font-family:inherit;font-size:13.5px;font-weight:800;letter-spacing:.3px;color:#fff;
-    padding:11px;background:var(--blue);transition:.15s;-webkit-tap-highlight-color:transparent;
-    box-shadow:0 8px 20px -10px rgba(31,92,255,.6)}
-  .savebtn:hover{background:var(--blue-dark)}
-  .savebtn:active{transform:translateY(1px)}
-  .savebtn.saved{background:var(--blue-soft);color:var(--blue);box-shadow:none}
-  .savebtn:disabled{opacity:.5;cursor:not-allowed}
+  /* ---------- AUTOGUARDADO (sin botón) ---------- */
+  .autosave{text-align:center;margin-top:11px;font-size:11.5px;font-weight:700;color:var(--muted);
+    transition:color .2s}
+  .autosave.ok{color:var(--blue)}
 
   .legal{text-align:center;font-size:11px;color:var(--muted);margin-top:24px;line-height:1.6}
   .legal b{color:var(--ink);font-weight:700}
@@ -398,14 +393,12 @@
       const {data}=await db.from('picks').select('match_id,home,away').eq('username',user);
       const map={}; (data||[]).forEach(r=>map[r.match_id]={h:r.home,a:r.away});
       MATCHES.forEach(m=>{
-        if(map[m.id]){ state[m.id].h=map[m.id].h; state[m.id].a=map[m.id].a; state[m.id].saved=true; }
-        else if(reset){ state[m.id].h=0; state[m.id].a=0; state[m.id].saved=false; }
+        if(map[m.id]){ state[m.id].h=map[m.id].h; state[m.id].a=map[m.id].a; state[m.id].saved=true; state[m.id].touched=true; }
+        else if(reset){ state[m.id].h=0; state[m.id].a=0; state[m.id].saved=false; state[m.id].touched=false; }
         else return; // sin reset y sin fila guardada: dejar lo que haya local
         const sh=document.getElementById('sc-'+m.id+'-h'), sa=document.getElementById('sc-'+m.id+'-a');
         if(sh)sh.textContent=state[m.id].h; if(sa)sa.textContent=state[m.id].a;
         store.set('prode_'+m.id,JSON.stringify(state[m.id]));
-        setSteppers(m.id, !!state[m.id].saved); // bloquear/desbloquear +/- según corresponda
-        renderSaveBtn(m.id);                     // y poner el botón en Guardar/Editar
       });
     }catch(e){ console.warn('dbLoadPicks',e); }
   }
@@ -456,7 +449,7 @@
         ${teamBlock(m,'a')}
       </div>
       <div class="result" id="rs-${m.id}"></div>
-      ${open?`<button class="savebtn" data-m="${m.id}">Guardar predicción</button>`:`<div class="lock">
+      ${open?`<div class="autosave" id="as-${m.id}">Se guarda solo · editá cuando quieras</div>`:`<div class="lock">
         <div class="ico">&#x1F512;&#xFE0E;</div>
         <div class="ltxt">Se desbloquea el<br><b>${m.date}</b></div>
         <div class="countdown" id="cd-${m.id}"></div>
@@ -466,41 +459,38 @@
 
   document.getElementById('matches').innerHTML=MATCHES.map(cardHTML).join('');
 
+  function setSteppers(m,disabled){
+    const card=document.getElementById('card-'+m);if(!card)return;
+    card.querySelectorAll('.stepper button').forEach(b=>b.disabled=disabled);
+  }
+  // guardar en la base con debounce (no escribir en cada toque de +/-)
+  const saveTimers={};
+  function scheduleSave(m){
+    if(!db||!currentUser())return;
+    clearTimeout(saveTimers[m]);
+    saveTimers[m]=setTimeout(()=>dbSavePick(currentUser(),m,state[m].h,state[m].a),700);
+  }
+  function flashSaved(m){
+    const el=document.getElementById('as-'+m);if(!el)return;
+    el.textContent='Guardado ✓'; el.classList.add('ok');
+    clearTimeout(el._t); el._t=setTimeout(()=>{el.textContent='Se guarda solo · editá cuando quieras';el.classList.remove('ok');},1400);
+  }
+  // PREMIO PARTICIPAR: cuando el usuario dejó pronóstico en las 3 fechas (una sola vez)
+  const allTouched=()=>MATCHES.every(m=>state[m.id]&&state[m.id].touched);
+  function checkAllDone(){
+    if(!ADMIN_CTX && allTouched() && store.get('prode_bono_shown')!=='1'){
+      store.set('prode_bono_shown','1'); openBono();
+    }
+  }
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.addEventListener('click',()=>{
       const {m,s,d}=b.dataset;
       state[m][s]=Math.max(0,Math.min(20,state[m][s]+(+d)));
       document.getElementById(`sc-${m}-${s}`).textContent=state[m][s];
+      state[m].saved=true; state[m].touched=true;      // autoguardado: queda jugado
       store.set('prode_'+m,JSON.stringify(state[m]));
+      scheduleSave(m); flashSaved(m); showBono(); checkAllDone();
     });
-  });
-
-  function setSteppers(m,disabled){
-    const card=document.getElementById('card-'+m);if(!card)return;
-    card.querySelectorAll('.stepper button').forEach(b=>b.disabled=disabled);
-  }
-  function renderSaveBtn(m){
-    const card=document.getElementById('card-'+m);if(!card)return;
-    const sb=card.querySelector('.savebtn');if(!sb)return;
-    if(state[m].saved){sb.classList.add('saved');sb.textContent='✏️ Editar predicción';sb.dataset.mode='edit';}
-    else{sb.classList.remove('saved');sb.textContent='Guardar predicción';sb.dataset.mode='save';}
-  }
-  document.querySelectorAll('.savebtn').forEach(sb=>{
-    const m=sb.dataset.m;
-    sb.addEventListener('click',()=>{
-      state[m].saved = sb.dataset.mode!=='edit'; // guardar => bloquea ; editar => desbloquea
-      store.set('prode_'+m,JSON.stringify(state[m]));
-      setSteppers(m,state[m].saved);
-      renderSaveBtn(m);
-      // al guardar, mandar la predicción a la base y mostrar el bono (una sola vez)
-      if(state[m].saved){
-        dbSavePick(currentUser(), m, state[m].h, state[m].a);
-        if(store.get('prode_bono_shown')!=='1'){ store.set('prode_bono_shown','1'); openBono(); }
-      }
-      showBono(); // actualizar el texto del banner (participar -> reclamar)
-    });
-    if(state[m].saved)setSteppers(m,true); // si ya venía guardada de antes, arranca bloqueada
-    renderSaveBtn(m);
   });
 
   const pad=n=>String(n).padStart(2,'0');
@@ -523,11 +513,9 @@
     if(!card||card.dataset.frozen)return;
     card.dataset.frozen='1';
     card.querySelectorAll('.stepper button').forEach(b=>b.disabled=true);
-    const sb=card.querySelector('.savebtn');if(sb)sb.style.display='none';
-    // al cerrarse, dejar la predicción fijada y guardada en la base (si hay usuario)
-    state[m.id].saved=true;
-    store.set('prode_'+m.id,JSON.stringify(state[m.id]));
-    dbSavePick(currentUser(), m.id, state[m.id].h, state[m.id].a);
+    const as=document.getElementById('as-'+m.id);if(as)as.style.display='none';
+    // al cerrarse, asegurar el guardado en la base (solo si el usuario jugó esta fecha)
+    if(state[m.id].touched){ store.set('prode_'+m.id,JSON.stringify(state[m.id])); dbSavePick(currentUser(), m.id, state[m.id].h, state[m.id].a); }
     if(!results[m.id]){
       const el=document.getElementById('rs-'+m.id);
       if(el){el.innerHTML='<div class="pending">🔒 Pronóstico cerrado y guardado · esperando resultado…</div>';el.classList.add('show');}
@@ -548,8 +536,8 @@
     el.innerHTML=`<div class="real">Resultado real<b>${real.h} - ${real.a}</b></div><div class="badge ${cls}">${txt}</div>`;
     el.classList.add('show');
     updateSummary();
-    // popups (solo jugadores que participaron; una vez por partido)
-    if(!ADMIN_CTX && state[m.id].saved){
+    // popups (solo jugadores que jugaron esa fecha; una vez por partido)
+    if(!ADMIN_CTX && state[m.id].touched){
       const isFirst = m.id===MATCHES[0].id;
       if(cls==='exact'){
         const k='prode_won_'+m.id;
