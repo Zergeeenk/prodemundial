@@ -332,7 +332,7 @@
     <div class="bono-badge">★ Premio exclusivo ★</div>
     <div class="modal-emoji">🎉🎁🎉</div>
     <div class="bono-kicker">¡Felicitaciones, ganaste!</div>
-    <div class="bono-big">50%</div>
+    <div class="bono-big">100%</div>
     <div class="bono-sub">de bono en tu carga</div>
     <div class="bono-by">Solo por participar del prode</div>
     <div class="modal-cta">📸 Sacale captura y mandala al webchat para reclamarlo</div>
@@ -842,10 +842,10 @@
   function showBono(){
     if(!ADMIN_CTX && currentUser()){
       if(hasParticipated()){
-        bono.innerHTML='<b>🎁 50% de bono en tu carga</b>'+
+        bono.innerHTML='<b>🎁 100% de bono en tu carga</b>'+
           '<small>Por jugar el prode · tocá para reclamarlo</small>';
       }else{
-        bono.innerHTML='<b>🎁 ¡Participá en el prode y ganá un 50% en tu carga!</b>'+
+        bono.innerHTML='<b>🎁 ¡Participá en el prode y ganá un 100% en tu carga!</b>'+
           '<small>Si le pegás al resultado, ganás 3000 fichas</small>';
       }
       bono.classList.add('show');
@@ -878,8 +878,8 @@
       badge='★ '+(txt||'¡Acertaste!')+' ★'; emoji='🎉⚽🎉'; kicker='¡Bien ahí!';
       big='200%'; sub='de bono en tu carga';
       cta='📸 Sacale captura y mandala al webchat para reclamarlo';
-    }else{ // miss
-      badge='★ Premio por participar ★'; emoji='🎁'; kicker='¡Gracias por jugar!';
+    }else{ // miss (jugó pero no acertó nada) -> premio consuelo
+      badge='★ Premio consuelo ★'; emoji='🎁'; kicker='¡Gracias por jugar!';
       big='50%'; sub='de bono en tu carga';
       cta='📸 Sacale captura y mandala al webchat para reclamarlo';
     }
