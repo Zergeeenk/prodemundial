@@ -499,6 +499,7 @@
         dbSavePick(currentUser(), m, state[m].h, state[m].a);
         if(store.get('prode_bono_shown')!=='1'){ store.set('prode_bono_shown','1'); openBono(); }
       }
+      showBono(); // actualizar el texto del banner (participar -> reclamar)
     });
     if(state[m].saved)setSteppers(m,true); // si ya venía guardada de antes, arranca bloqueada
     renderSaveBtn(m);
@@ -756,9 +757,18 @@
 
   // ---------- BONO (100% por participar, para todos los jugadores) ----------
   const bono=document.getElementById('bono');
+  const hasParticipated=()=>MATCHES.some(m=>state[m.id]&&state[m.id].saved);
   function showBono(){
-    if(!ADMIN_CTX && currentUser()) bono.classList.add('show');
-    else bono.classList.remove('show');
+    if(!ADMIN_CTX && currentUser()){
+      if(hasParticipated()){
+        bono.innerHTML='<b>🎁 100% de bono en tu carga</b>'+
+          '<small>Por jugar el prode · tocá para reclamarlo</small>';
+      }else{
+        bono.innerHTML='<b>🎁 ¡Participá en el prode y ganá un 100% en tu carga!</b>'+
+          '<small>Si le pegás al resultado, ganás 3000 fichas</small>';
+      }
+      bono.classList.add('show');
+    }else bono.classList.remove('show');
   }
   showBono();
   // al tocar el banner se abre la ventana emergente (no navega)
