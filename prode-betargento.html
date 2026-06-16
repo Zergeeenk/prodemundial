@@ -231,12 +231,6 @@
   .modal-btn{display:block;background:#fff;color:var(--blue-dark);text-decoration:none;
     font-weight:800;font-size:15px;padding:13px;border-radius:12px;transition:.15s}
   .modal-btn:hover{background:#eaf0ff}
-  /* mensaje que se mueve (bamboleo para llamar la atención) */
-  .bonomove{animation:bonoMove 1.2s ease-in-out infinite;will-change:transform}
-  @keyframes bonoMove{
-    0%,100%{transform:translateY(0) rotate(-1.6deg)}
-    50%{transform:translateY(-7px) rotate(1.6deg)}
-  }
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important}
@@ -299,9 +293,8 @@
   <div class="modal-card">
     <button class="modal-x" id="bonoClose" aria-label="cerrar">×</button>
     <div class="modal-emoji">🎁</div>
-    <h2 class="modal-title bonomove">¡Por participar ganaste un bono de 100% en tu carga!</h2>
+    <h2 class="modal-title">¡Por participar ganaste un bono de 100% en tu carga!</h2>
     <div class="modal-cta">📸 Sacale captura y mandala al webchat</div>
-    <a class="modal-btn" id="bonoBtn" href="#" target="_blank" rel="noopener">Ir al webchat</a>
   </div>
 </div>
 
@@ -475,8 +468,11 @@
       store.set('prode_'+m,JSON.stringify(state[m]));
       setSteppers(m,state[m].saved);
       renderSaveBtn(m);
-      // al guardar, mandar la predicción a la base (si hay usuario)
-      if(state[m].saved) dbSavePick(currentUser(), m, state[m].h, state[m].a);
+      // al guardar, mandar la predicción a la base y mostrar el bono (una sola vez)
+      if(state[m].saved){
+        dbSavePick(currentUser(), m, state[m].h, state[m].a);
+        if(store.get('prode_bono_shown')!=='1'){ store.set('prode_bono_shown','1'); openBono(); }
+      }
     });
     if(state[m].saved)setSteppers(m,true); // si ya venía guardada de antes, arranca bloqueada
     renderSaveBtn(m);
@@ -744,7 +740,6 @@
 
   // ---------- VENTANA EMERGENTE: bono por participar ----------
   const bonoModal=document.getElementById('bonoModal');
-  document.getElementById('bonoBtn').setAttribute('href',BONUS_URL);
   function openBono(){bonoModal.classList.add('show');bonoModal.setAttribute('aria-hidden','false');}
   function closeBono(){bonoModal.classList.remove('show');bonoModal.setAttribute('aria-hidden','true');}
   document.getElementById('bonoClose').addEventListener('click',closeBono);
