@@ -181,6 +181,8 @@
   .admin-btn:hover{background:var(--blue-dark)}
   .admin-btn.sec{background:var(--blue-soft);color:var(--blue)}
   .admin-btn.sec:hover{background:var(--blue-border)}
+  .admin-btn.del{background:#fdecec;color:#c0392b}
+  .admin-btn.del:hover{background:#f9d9d9}
   .amsg{font-size:11.5px;font-weight:700;color:var(--blue);margin:8px 0 0;min-height:14px}
   .rank{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;overflow-x:auto}
   .rank>b{font-size:13px;color:var(--ink)}
@@ -681,6 +683,20 @@
       refreshAdmin();                          // y refrescar ganadores + participantes
     }catch(e){msg.textContent='Error guardando: '+(e.message||e);}
   }
+  async function deleteAdminResult(mid){
+    const msg=document.getElementById('amsg');
+    if(!db){msg.textContent='Supabase no configurado.';return;}
+    try{
+      await db.from('results').delete().eq('match_id',mid);
+      delete results[mid];
+      store.set('prode_won_'+mid,''); // permitir que el popup vuelva a saltar si se recarga el resultado
+      const el=document.getElementById('rs-'+mid); if(el){el.innerHTML='';el.classList.remove('show');}
+      const ih=document.getElementById('ar-'+mid+'-h'),ia=document.getElementById('ar-'+mid+'-a');
+      if(ih)ih.value=''; if(ia)ia.value='';
+      msg.textContent='Resultado borrado (los jugadores lo ven al recargar)';
+      refreshAdmin();
+    }catch(e){msg.textContent='Error borrando: '+(e.message||e);}
+  }
   async function initAdmin(){
     const res=await dbGetResults();
     const panel=document.getElementById('admin');
@@ -693,7 +709,8 @@
           '<input type="number" min="0" max="50" id="ar-'+m.id+'-h" value="'+r.h+'" aria-label="'+m.home+'">'+
           '<span class="asep">-</span>'+
           '<input type="number" min="0" max="50" id="ar-'+m.id+'-a" value="'+r.a+'" aria-label="'+m.away+'">'+
-          '<button class="admin-btn" data-rm="'+m.id+'">Guardar resultado</button></div>';
+          '<button class="admin-btn" data-rm="'+m.id+'">Guardar</button>'+
+          '<button class="admin-btn del" data-del="'+m.id+'">Borrar</button></div>';
       }).join('')+
       '<div class="amsg" id="amsg"></div>'+
       '<div class="rank"><div class="rank-h"><b>🏆 Ganadores</b>'+
@@ -701,6 +718,7 @@
       '<div class="rank"><b>👥 Todos los participantes</b><div id="partBox"></div></div>';
     panel.classList.add('show');
     panel.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>saveAdminResult(b.dataset.rm)));
+    panel.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteAdminResult(b.dataset.del)));
     document.getElementById('refreshAll').addEventListener('click',refreshAdmin);
     refreshAdmin(); // mostrar ganadores y participantes al toque
   }
