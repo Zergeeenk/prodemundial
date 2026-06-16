@@ -37,3 +37,10 @@ create policy picks_all on public.picks
 drop policy if exists results_all on public.results;
 create policy results_all on public.results
   for all to anon using (true) with check (true);
+
+-- ------------------------------------------------------------
+--  (Opcional) Realtime: que el resultado cargado por el admin
+--  aparezca al INSTANTE en todos sin esperar el refresco (~30s).
+--  Si tira "already member of publication", ya estaba: ignoralo.
+-- ------------------------------------------------------------
+alter publication supabase_realtime add table public.results;

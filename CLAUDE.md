@@ -116,10 +116,25 @@ gratuita de TheSportsDB desde el navegador (CORS habilitado):
 
 ## Base de datos (Supabase) y modo admin
 
-> Nota: las secciones de arriba sobre **bono/modal "GANAMOS Y GANASTE", fichas,
-> `BONUS_URL`, `#testbonus` y el logo `Logo-bet.png`** quedaron **obsoletas**: se
-> quitaron al hacer el prode genérico (marca "Prode Argento!"). Hoy no hay promo de
-> casino ni logo.
+> Nota: las secciones de arriba sobre el **logo `Logo-bet.png`** y el viejo
+> **`#testbonus`** quedaron **obsoletas** (se quitaron al hacer la marca genérica
+> "Prode Argento!"). El bono/modal volvió pero distinto (ver abajo): banner **100% de
+> bono** para todos los que juegan + ventana emergente **3000 fichas** al acertar el
+> marcador exacto. El link de ambos sale de `BONUS_URL` (default `'#'`).
+
+### Bonos y ventana emergente
+
+- **Banner 100% de bono** (`#bono`, `.bono`): se muestra a **todo jugador logueado**
+  (no en modo admin) vía `showBono()`. Es un `<a>` que apunta a `BONUS_URL`.
+- **Ventana emergente 3000 fichas** (`#winModal`): en `showResult`, si **no** es admin,
+  el jugador **acertó el marcador exacto** (`cls==='exact'`) y tenía la predicción
+  guardada (`state.saved`), salta `openWin()`. Se muestra **una vez por partido**
+  (flag `prode_won_<mid>` en `localStorage`). Cierra con ×, click afuera o Escape.
+- **Propagación a todos:** al guardar el admin un resultado, los jugadores lo reciben
+  por **polling** (`checkAdminResults` cada 30 s) y, si está habilitado, por
+  **Supabase Realtime** (canal `results-rt` sobre la tabla `results`; la línea
+  opcional `alter publication supabase_realtime add table public.results;` está en
+  `supabase-setup.sql`). Ahí a cada ganador le salta el popup en su pantalla.
 
 A partir de la integración con **Supabase** el prode dejó de ser 100% local: las
 predicciones y los resultados se guardan en una base compartida (sigue sin build,
