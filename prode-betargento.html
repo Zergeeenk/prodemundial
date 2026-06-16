@@ -229,8 +229,11 @@
   .modal-title{font-size:28px;font-weight:900;letter-spacing:-.5px;line-height:1.05;margin-bottom:12px}
   .modal-prize{font-size:14px;font-weight:700;margin:5px 0;line-height:1.3}
   .modal-prize b{display:block;font-size:30px;font-weight:900;color:#ffd76b;letter-spacing:.3px;margin:4px 0}
-  .modal-cta{margin:14px 0 18px;font-size:12.5px;font-weight:800;letter-spacing:.3px;
-    background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);border-radius:12px;padding:12px}
+  .modal-cta{margin:16px 0 4px;font-size:14px;font-weight:900;letter-spacing:.2px;line-height:1.35;
+    color:#5a3d00;background:linear-gradient(135deg,#ffe79a,#ffc83f);border-radius:14px;padding:15px 16px;
+    box-shadow:0 10px 26px -8px rgba(255,200,60,.9);animation:ctaGlow 1.5s ease-in-out infinite}
+  @keyframes ctaGlow{0%,100%{box-shadow:0 10px 26px -8px rgba(255,200,60,.5)}
+    50%{box-shadow:0 12px 36px -4px rgba(255,200,60,1)}}
   .modal-btn{display:block;background:#fff;color:var(--blue-dark);text-decoration:none;
     font-weight:800;font-size:15px;padding:13px;border-radius:12px;transition:.15s}
   .modal-btn:hover{background:#eaf0ff}
@@ -250,12 +253,13 @@
     50%{transform:scale(1.06);box-shadow:0 10px 28px -4px rgba(255,200,60,1)}}
   .bono-card .modal-emoji{font-size:46px;margin-bottom:10px}
   .bono-kicker{font-size:16px;font-weight:800;letter-spacing:.3px;opacity:.96;margin-bottom:4px}
-  .bono-big{font-size:68px;font-weight:900;line-height:1;color:#ffd76b;letter-spacing:-1.5px;margin:6px 0 2px;
-    text-shadow:0 8px 24px rgba(0,0,0,.3);animation:bigPop .55s cubic-bezier(.2,.9,.3,1.6) both}
+  .bono-big{font-size:74px;font-weight:900;line-height:1;color:#ffd76b;letter-spacing:-1.5px;margin:6px 0 2px;
+    text-shadow:0 0 26px rgba(255,215,107,.85),0 8px 24px rgba(0,0,0,.35);
+    animation:bigPop .55s cubic-bezier(.2,.9,.3,1.6) both}
   @keyframes bigPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
   .bono-sub{font-size:18px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
   .bono-by{font-size:12.5px;font-weight:600;opacity:.9;margin-bottom:18px}
-  .bono-card .modal-cta{margin:0}
+  .bono-card .modal-cta{margin-top:8px}
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important}
