@@ -178,9 +178,11 @@ Función `isOpen(m)` decide si una tarjeta está abierta:
 Las tarjetas bloqueadas muestran un overlay `.lock` con candado y un **countdown**
 (días/horas/min) que se refresca cada 30 s y recarga la página al llegar a cero.
 
-> Nota: `m.unlock` usa hora **local del navegador**, no la hora de Argentina.
-> Si se necesita anclar a `America/Argentina/Buenos_Aires`, calcular el unlock en
-> UTC y comparar contra `Date.now()`.
+> Nota: `unlock`/`kickoff` están anclados a **hora de Argentina (UTC-3)** vía el
+> helper `AR(año,mes,día,horaARG)` → `new Date(Date.UTC(y,mo,d,h+3))`. Son instantes
+> absolutos, así que el desbloqueo/cierre ocurre en el mismo momento real para
+> cualquier visitante sin importar su zona horaria. Los textos de hora en la tarjeta
+> (ej. "22:00") son fijos en ART.
 
 ## Diseño / tokens (tema claro)
 

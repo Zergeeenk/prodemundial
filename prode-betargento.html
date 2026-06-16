@@ -372,6 +372,10 @@
   const F={arg:'Bandera%20Argentina.webp', alg:'Bandera%20Argelia.jpg',
            aut:'Bandera%20austria.avif', jor:'jordania%20bandera.avif'};
 
+  // Todas las fechas/horas son de ARGENTINA (UTC-3), fijas para CUALQUIER visitante
+  // (no dependen del reloj/zona local del navegador). AR(año,mes,día,horaARG[,min]).
+  const AR=(y,mo,d,h,mi)=>new Date(Date.UTC(y,mo,d,h+3,mi||0));
+
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
@@ -387,15 +391,15 @@
     // === FIN PRUEBA ===
     { id:'m1', md:'Fecha 1 · Debut', home:'Argentina', away:'Argelia',
       himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
-      unlock:new Date(2026,5,16,0,0,0), kickoff:new Date(2026,5,16,22,0,0),
+      unlock:AR(2026,5,16,0), kickoff:AR(2026,5,16,22),
       evName:'Argentina_vs_Algeria', apiHomeLeft:true, forceOpen:true, featured:true },
     { id:'m2', md:'Fecha 2', home:'Austria', away:'Argentina',
       himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
-      unlock:new Date(2026,5,22,0,0,0), kickoff:new Date(2026,5,22,14,0,0),
+      unlock:AR(2026,5,22,0), kickoff:AR(2026,5,22,14),
       evName:'Argentina_vs_Austria', apiHomeLeft:false },
     { id:'m3', md:'Fecha 3', home:'Argentina', away:'Jordania',
       himg:F.arg, aimg:F.jor, date:'Sábado 27 de junio', time:'23:00', venue:'Kansas City',
-      unlock:new Date(2026,5,27,0,0,0), kickoff:new Date(2026,5,27,23,0,0),
+      unlock:AR(2026,5,27,0), kickoff:AR(2026,5,27,23),
       evName:'Jordan_vs_Argentina', apiHomeLeft:false },
   ];
 
