@@ -194,6 +194,10 @@
   .rank th{color:var(--muted);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
   .rank td.num,.rank th.num{text-align:center}
   .rank tbody tr:first-child td{color:var(--ink)}
+  .rank td.prize{font-weight:800;white-space:nowrap}
+  .rank td.p-top{color:#b8860b}   /* 3000 fichas */
+  .rank td.p-mid{color:var(--blue)} /* 200% */
+  .rank td.p-low{color:var(--muted)} /* 100% */
   .rank td.ok{color:var(--blue);font-weight:800}      /* marcador exacto */
   .rank td.half{color:var(--ink);font-weight:700}     /* acertó el ganador */
   .rank .leg{font-size:10.5px;color:var(--muted);margin-top:6px}
@@ -635,10 +639,14 @@
       const res=await dbGetResults();
       const rows=computeRanking(r1.data||[],res);
       if(!rows.length){box.innerHTML='<div class="ahint">Todavía no hay ganadores (faltan predicciones o cargar resultados).</div>';return;}
+      const prizeOf=r=> r.exact>0 ? {t:(r.exact>1?r.exact+'× ':'')+'3000 fichas',c:'p-top'}
+                      : r.win>0   ? {t:'200% bono',c:'p-mid'}
+                                  : {t:'100% bono',c:'p-low'};
       box.innerHTML='<table><thead><tr><th class="num">#</th><th>Usuario</th>'+
-        '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th></tr></thead><tbody>'+
-        rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td></td>`+
-          `<td class="num">${r.exact}</td><td class="num">${r.win}</td><td class="num">${r.pts}</td></tr>`).join('')+
+        '<th class="num">Exactos</th><th class="num">Ganador</th><th class="num">Pts</th><th>Premio</th></tr></thead><tbody>'+
+        rows.map((r,i)=>{const p=prizeOf(r);return `<tr><td class="num">${i+1}</td><td></td>`+
+          `<td class="num">${r.exact}</td><td class="num">${r.win}</td><td class="num">${r.pts}</td>`+
+          `<td class="prize ${p.c}">${p.t}</td></tr>`;}).join('')+
         '</tbody></table>';
       box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.children[1].textContent=rows[i].user;}); // evita inyección
     }catch(e){box.textContent='Error: '+(e.message||e);}
