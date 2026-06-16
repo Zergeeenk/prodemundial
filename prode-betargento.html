@@ -652,12 +652,18 @@
       return m.apiHomeLeft ? {h:+hs,a:+as} : {h:+as,a:+hs};
     }catch(e){return null;}
   }
+  // guardar en Supabase un resultado traído de la API (para que lo vea el admin y todos)
+  async function dbUpsertResult(mid,real){
+    if(!db)return;
+    try{ await db.from('results').upsert({match_id:mid,home:real.h,away:real.a},{onConflict:'match_id'}); }
+    catch(e){ console.warn('dbUpsertResult',e); }
+  }
   async function checkResults(){
     for(const m of MATCHES){
       if(results[m.id])continue;
       if(new Date()<m.kickoff)continue; // todavía no se jugó
       const real=await fetchResult(m);
-      if(real)showResult(m,real);
+      if(real){ showResult(m,real); dbUpsertResult(m.id,real); } // mostrar + persistir en la base
     }
   }
 
