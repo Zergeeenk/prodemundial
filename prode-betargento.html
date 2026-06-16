@@ -661,7 +661,7 @@
   async function checkResults(){
     for(const m of MATCHES){
       if(results[m.id])continue;
-      if(new Date()<m.kickoff)continue; // todavía no se jugó
+      if(!m.test && new Date()<m.kickoff)continue; // todavía no se jugó (los test buscan siempre)
       const real=await fetchResult(m);
       if(real){ showResult(m,real); dbUpsertResult(m.id,real); } // mostrar + persistir en la base
     }
