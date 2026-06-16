@@ -328,10 +328,11 @@
     <div class="bono-badge">★ Premio exclusivo ★</div>
     <div class="modal-emoji">🎉🎁🎉</div>
     <div class="bono-kicker">¡Felicitaciones, ganaste!</div>
-    <div class="bono-big">100%</div>
+    <div class="bono-big">50%</div>
     <div class="bono-sub">de bono en tu carga</div>
     <div class="bono-by">Solo por participar del prode</div>
     <div class="modal-cta">📸 Sacale captura y mandala al webchat para reclamarlo</div>
+    <button class="modal-btn" id="bonoClaim" type="button" style="margin-top:14px">🎁 Ya lo reclamé</button>
   </div>
 </div>
 
@@ -358,11 +359,11 @@
     { id:'m2', md:'Fecha 2', home:'Austria', away:'Argentina',
       himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
       unlock:new Date(2026,5,22,0,0,0), kickoff:new Date(2026,5,22,14,0,0),
-      evName:'Argentina_vs_Austria', apiHomeLeft:false, forceOpen:true },
+      evName:'Argentina_vs_Austria', apiHomeLeft:false },
     { id:'m3', md:'Fecha 3', home:'Argentina', away:'Jordania',
       himg:F.arg, aimg:F.jor, date:'Sábado 27 de junio', time:'23:00', venue:'Kansas City',
       unlock:new Date(2026,5,27,0,0,0), kickoff:new Date(2026,5,27,23,0,0),
-      evName:'Jordan_vs_Argentina', apiHomeLeft:false, forceOpen:true },
+      evName:'Jordan_vs_Argentina', apiHomeLeft:false },
   ];
 
   // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
@@ -429,6 +430,23 @@
     const res=await dbGetResults();
     MATCHES.forEach(m=>{ if(res[m.id]&&!results[m.id]) showResult(m,res[m.id]); });
   }
+  // ---------- RECLAMOS DEL BONO (para que el admin vea quién lo reclamó) ----------
+  async function dbClaim(user){
+    if(!db||!user)return;
+    try{ await db.from('claims').upsert({username:user},{onConflict:'username'}); }
+    catch(e){ console.warn('dbClaim',e); }
+  }
+  async function dbGetClaims(){
+    if(!db)return [];
+    try{ const {data}=await db.from('claims').select('username,claimed_at').order('claimed_at',{ascending:true}); return data||[]; }
+    catch(e){ console.warn('dbGetClaims',e); return []; }
+  }
+  // si el usuario ya reclamó (en cualquier dispositivo), marcarlo para que NO le vuelva a salir
+  async function refreshClaimed(){
+    const u=currentUser(); if(!db||!u)return;
+    try{ const {data}=await db.from('claims').select('username').eq('username',u);
+      if(data&&data.length) store.set('prode_bono_done_'+u,'1'); }catch(e){}
+  }
 
   const state={};
   MATCHES.forEach(m=>{let s=null;try{s=JSON.parse(store.get('prode_'+m.id))}catch(e){}state[m.id]=s||{h:0,a:0}});
@@ -490,13 +508,13 @@
     el.textContent='Guardado ✓'; el.classList.add('ok');
     clearTimeout(el._t); el._t=setTimeout(()=>{el.textContent='Se guarda solo · editá cuando quieras';el.classList.remove('ok');},1400);
   }
-  // PREMIO PARTICIPAR: cuando el usuario dejó pronóstico en las 3 fechas (una sola vez por usuario)
-  const allTouched=()=>MATCHES.every(m=>state[m.id]&&state[m.id].touched);
+  // PREMIO PARTICIPAR: cuando el usuario dejó pronóstico en TODAS las fechas abiertas (una vez por usuario)
+  const allTouched=()=>{const o=MATCHES.filter(isOpen);return o.length>0 && o.every(m=>state[m.id]&&state[m.id].touched);};
   let bonoTimer=null;
   function checkAllDone(){
     if(ADMIN_CTX || !currentUser() || !allTouched())return;
     const k='prode_bono_done_'+currentUser();
-    if(store.get(k)==='1')return;
+    if(store.get(k)==='1')return; // ya lo vio / ya lo reclamó
     // esperar ~3s (y reiniciar con cada cambio) para no saltar antes de terminar el último
     clearTimeout(bonoTimer);
     bonoTimer=setTimeout(()=>{ if(store.get(k)==='1')return; store.set(k,'1'); openBono(); },3000);
@@ -616,7 +634,7 @@
     .on('postgres_changes',{event:'*',schema:'public',table:'results'},()=>checkAdminResults())
     .subscribe(); }catch(e){ console.warn('realtime',e); }
   // traer las predicciones guardadas del usuario logueado (si las hay en la base)
-  dbLoadPicks(currentUser());
+  (async()=>{ await refreshClaimed(); dbLoadPicks(currentUser()); })();
 
   // ---------- MODO ADMIN ----------
   // Se entra con ?admin (pide la clave) o ?admin=CLAVE (entra directo). No pide usuario.
@@ -684,7 +702,19 @@
       box.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.querySelector('.uname').textContent=users[i];}); // evita inyección
     }catch(e){box.textContent='Error: '+(e.message||e);}
   }
-  function refreshAdmin(){ renderRanking(); renderParticipants(); }
+  function refreshAdmin(){ renderRanking(); renderParticipants(); renderClaims(); }
+  async function renderClaims(){
+    const box=document.getElementById('claimBox'); if(!box)return;
+    if(!db){box.textContent='Supabase no configurado.';return;}
+    box.textContent='Cargando…';
+    const data=await dbGetClaims();
+    if(!data.length){box.innerHTML='<div class="ahint">Nadie reclamó el bono todavía.</div>';return;}
+    box.innerHTML='<table><thead><tr><th>Usuario</th><th class="num">Reclamó</th></tr></thead><tbody>'+
+      data.map(()=>'<tr><td class="uname"></td><td class="num cdate"></td></tr>').join('')+'</tbody></table>'+
+      '<div class="leg">Total: <b>'+data.length+'</b> reclamaron el bono por participar</div>';
+    const trs=box.querySelectorAll('tbody tr');
+    data.forEach((c,i)=>{ trs[i].querySelector('.uname').textContent=c.username; trs[i].querySelector('.cdate').textContent=(c.claimed_at||'').slice(0,10); });
+  }
   async function saveAdminResult(mid){
     const msg=document.getElementById('amsg');
     if(!db){msg.textContent='Supabase no configurado.';return;}
@@ -731,7 +761,8 @@
       '<div class="amsg" id="amsg"></div>'+
       '<div class="rank"><div class="rank-h"><b>🏆 Ganadores</b>'+
       '<button class="admin-btn sec" id="refreshAll">↻ Actualizar</button></div><div id="rankBox"></div></div>'+
-      '<div class="rank"><b>👥 Todos los participantes</b><div id="partBox"></div></div>';
+      '<div class="rank"><b>👥 Todos los participantes</b><div id="partBox"></div></div>'+
+      '<div class="rank"><b>🎁 Bonos reclamados</b><div id="claimBox"></div></div>';
     panel.classList.add('show');
     panel.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>saveAdminResult(b.dataset.rm)));
     panel.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteAdminResult(b.dataset.del)));
@@ -781,7 +812,7 @@
     if(!v){loginInput.focus();return;}
     store.set(USER_KEY,v);
     closeLogin();showGreeting();showBono();
-    dbLoadPicks(v,{reset:true}); // cargar lo de ESTE usuario; lo que no tenga, a 0-0
+    (async()=>{ await refreshClaimed(); dbLoadPicks(v,{reset:true}); })(); // estado de reclamo + predicciones
   }
   document.getElementById('loginEnter').addEventListener('click',submitLogin);
   loginInput.addEventListener('keydown',e=>{if(e.key==='Enter')submitLogin();});
@@ -814,6 +845,10 @@
   function closeBono(){bonoModal.classList.remove('show');bonoModal.setAttribute('aria-hidden','true');}
   document.getElementById('bonoClose').addEventListener('click',closeBono);
   bonoModal.addEventListener('click',e=>{if(e.target===bonoModal)closeBono();});
+  document.getElementById('bonoClaim').addEventListener('click',()=>{
+    const u=currentUser(); if(u){ store.set('prode_bono_done_'+u,'1'); dbClaim(u); } // queda registrado y no le vuelve a salir
+    closeBono();
+  });
 
   // ---------- VENTANA EMERGENTE DE RESULTADO ----------
   // kind 'win'  -> ganaste 3000 fichas ; kind 'wait' -> no se dio, esperá + 100% por participar

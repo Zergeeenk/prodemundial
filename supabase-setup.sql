@@ -21,6 +21,12 @@ create table if not exists public.results (
   updated_at timestamptz not null default now()
 );
 
+-- Reclamos del bono por participar: una fila por usuario que lo reclamó
+create table if not exists public.claims (
+  username   text primary key,
+  claimed_at timestamptz not null default now()
+);
+
 -- ------------------------------------------------------------
 --  Permisos (RLS)
 --  Prode casual: se permite leer/escribir con la anon key.
@@ -29,6 +35,7 @@ create table if not exists public.results (
 -- ------------------------------------------------------------
 alter table public.picks   enable row level security;
 alter table public.results enable row level security;
+alter table public.claims  enable row level security;
 
 drop policy if exists picks_all on public.picks;
 create policy picks_all on public.picks
@@ -36,6 +43,10 @@ create policy picks_all on public.picks
 
 drop policy if exists results_all on public.results;
 create policy results_all on public.results
+  for all to anon using (true) with check (true);
+
+drop policy if exists claims_all on public.claims;
+create policy claims_all on public.claims
   for all to anon using (true) with check (true);
 
 -- ------------------------------------------------------------
