@@ -400,6 +400,7 @@
         if(sh)sh.textContent=state[m.id].h; if(sa)sa.textContent=state[m.id].a;
         store.set('prode_'+m.id,JSON.stringify(state[m.id]));
       });
+      if(typeof checkAllDone==='function') checkAllDone(); // si ya tenía las 3 jugadas, premio participar
     }catch(e){ console.warn('dbLoadPicks',e); }
   }
   // resultados reales cargados por el admin (fuente prioritaria)
@@ -475,12 +476,12 @@
     el.textContent='Guardado ✓'; el.classList.add('ok');
     clearTimeout(el._t); el._t=setTimeout(()=>{el.textContent='Se guarda solo · editá cuando quieras';el.classList.remove('ok');},1400);
   }
-  // PREMIO PARTICIPAR: cuando el usuario dejó pronóstico en las 3 fechas (una sola vez)
+  // PREMIO PARTICIPAR: cuando el usuario dejó pronóstico en las 3 fechas (una sola vez por usuario)
   const allTouched=()=>MATCHES.every(m=>state[m.id]&&state[m.id].touched);
   function checkAllDone(){
-    if(!ADMIN_CTX && allTouched() && store.get('prode_bono_shown')!=='1'){
-      store.set('prode_bono_shown','1'); openBono();
-    }
+    if(ADMIN_CTX || !currentUser() || !allTouched())return;
+    const k='prode_bono_done_'+currentUser();
+    if(store.get(k)!=='1'){ store.set(k,'1'); openBono(); }
   }
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.addEventListener('click',()=>{
