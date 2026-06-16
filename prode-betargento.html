@@ -375,6 +375,16 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
+    // === PARTIDOS DE PRUEBA (auto-resultado real del Mundial de hoy) — QUITAR DESPUÉS ===
+    { id:'tst1', md:'PRUEBA · finalizado hoy', home:'Irán', away:'Nueva Zelanda',
+      himg:F.aut, aimg:F.jor, date:'Hoy', time:'01:00', venue:'Mundial 2026',
+      unlock:new Date(2026,0,1,0,0,0), kickoff:new Date(2026,5,16,1,0,0),
+      evName:'Iran_vs_New_Zealand', apiHomeLeft:true, forceOpen:true, test:true },
+    { id:'tst2', md:'PRUEBA · hoy 19:00', home:'Francia', away:'Senegal',
+      himg:F.aut, aimg:F.jor, date:'Hoy', time:'19:00', venue:'Mundial 2026',
+      unlock:new Date(2026,0,1,0,0,0), kickoff:new Date(2026,5,16,19,0,0),
+      evName:'France_vs_Senegal', apiHomeLeft:true, forceOpen:true, test:true },
+    // === FIN PRUEBA ===
     { id:'m1', md:'Fecha 1 · Debut', home:'Argentina', away:'Argelia',
       himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
       unlock:new Date(2026,5,16,0,0,0), kickoff:new Date(2026,5,16,22,0,0),
