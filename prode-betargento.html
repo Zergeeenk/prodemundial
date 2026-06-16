@@ -327,13 +327,9 @@
 </div>
 
 <div id="winModal" class="modal" aria-hidden="true">
-  <div class="modal-card">
+  <div class="modal-card" id="winCard">
     <button class="modal-x" id="winClose" aria-label="cerrar">×</button>
-    <div class="modal-emoji">🎉🎰</div>
-    <h2 class="modal-title">¡GANASTE!</h2>
-    <div class="modal-prize">Le pegaste al resultado<b>3000 fichas</b>de regalo</div>
-    <div class="modal-cta">🎁 Además, 100% de bono en tu próxima carga</div>
-    <a class="modal-btn" id="winBtn" href="#" target="_blank" rel="noopener">Reclamar ahora</a>
+    <div id="winBody"></div>
   </div>
 </div>
 
@@ -552,10 +548,16 @@
     el.innerHTML=`<div class="real">Resultado real<b>${real.h} - ${real.a}</b></div><div class="badge ${cls}">${txt}</div>`;
     el.classList.add('show');
     updateSummary();
-    // ¡le pegó al resultado! popup de 3000 fichas (solo jugadores, una vez por partido)
-    if(!ADMIN_CTX && cls==='exact' && state[m.id].saved){
-      const k='prode_won_'+m.id;
-      if(store.get(k)!=='1'){ store.set(k,'1'); openWin(); }
+    // popups (solo jugadores que participaron; una vez por partido)
+    if(!ADMIN_CTX && state[m.id].saved){
+      const isFirst = m.id===MATCHES[0].id;
+      if(cls==='exact'){
+        const k='prode_won_'+m.id;
+        if(store.get(k)!=='1'){ store.set(k,'1'); openResult('win'); }   // ganaste 3000 fichas
+      }else if(isFirst){
+        const k='prode_end_'+m.id;
+        if(store.get(k)!=='1'){ store.set(k,'1'); openResult('wait'); }  // no se dio: esperá + 100%
+      }
     }
   }
   function updateSummary(){
@@ -799,10 +801,31 @@
   document.getElementById('bonoClose').addEventListener('click',closeBono);
   bonoModal.addEventListener('click',e=>{if(e.target===bonoModal)closeBono();});
 
-  // ---------- VENTANA EMERGENTE (3000 fichas al ganador) ----------
+  // ---------- VENTANA EMERGENTE DE RESULTADO ----------
+  // kind 'win'  -> ganaste 3000 fichas ; kind 'wait' -> no se dio, esperá + 100% por participar
   const winModal=document.getElementById('winModal');
-  document.getElementById('winBtn').setAttribute('href',BONUS_URL);
-  function openWin(){winModal.classList.add('show');winModal.setAttribute('aria-hidden','false');}
+  const winCard=document.getElementById('winCard');
+  const winBody=document.getElementById('winBody');
+  function openResult(kind){
+    if(kind==='win'){
+      winCard.classList.add('bono-card');
+      winBody.innerHTML=
+        '<div class="bono-badge">★ Ganaste ★</div>'+
+        '<div class="modal-emoji">🎉🎰🎉</div>'+
+        '<div class="bono-kicker">¡Le pegaste al resultado!</div>'+
+        '<div class="bono-big">3000</div>'+
+        '<div class="bono-sub">fichas gratis</div>'+
+        '<div class="modal-cta">📸 Sacale captura y mandala al webchat para reclamarlas</div>';
+    }else{
+      winCard.classList.remove('bono-card');
+      winBody.innerHTML=
+        '<div class="modal-emoji">⏳⚽</div>'+
+        '<div class="bono-kicker">¡Gracias por jugar!</div>'+
+        '<div class="bono-by" style="font-size:14px;margin-bottom:14px">Esta no se dio… seguí atento a los resultados de los próximos partidos.</div>'+
+        '<div class="modal-cta">🎁 Igual tenés tu <b>100% de bono por participar</b> · sacale captura y mandalo al webchat</div>';
+    }
+    winModal.classList.add('show');winModal.setAttribute('aria-hidden','false');
+  }
   function closeWin(){winModal.classList.remove('show');winModal.setAttribute('aria-hidden','true');}
   document.getElementById('winClose').addEventListener('click',closeWin);
   winModal.addEventListener('click',e=>{if(e.target===winModal)closeWin();});
