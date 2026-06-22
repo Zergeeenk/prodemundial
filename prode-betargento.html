@@ -335,7 +335,7 @@
   <div class="hero">
     <div id="greeting" class="greeting"></div>
     <h1 class="title">Prode <span>Argento!</span></h1>
-    <p class="lede">Pronosticá cada partido de Argentina. <b>El debut ya está abierto</b>; el resto se abre el día del partido.</p>
+    <p class="lede">Pronosticá los partidos de Argentina. <b>El de hoy ya está abierto</b>; el resto se abre el día del partido.</p>
   </div>
 
   <a id="bono" class="bono" href="#" target="_blank" rel="noopener">
@@ -385,14 +385,10 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
-    { id:'m1', md:'Fecha 1 · Debut', home:'Argentina', away:'Argelia',
-      himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
-      unlock:AR(2026,5,16,0), kickoff:AR(2026,5,16,22),
-      evName:'Argentina_vs_Algeria', apiHomeLeft:true, forceOpen:true, featured:true },
-    { id:'m2', md:'Fecha 2', home:'Austria', away:'Argentina',
+    { id:'m2', md:'Fecha 2 · Hoy', home:'Austria', away:'Argentina',
       himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
       unlock:AR(2026,5,22,0), kickoff:AR(2026,5,22,14),
-      evName:'Argentina_vs_Austria', apiHomeLeft:false, forceOpen:true },
+      evName:'Argentina_vs_Austria', apiHomeLeft:false, forceOpen:true, featured:true },
     { id:'m3', md:'Fecha 3', home:'Argentina', away:'Jordania',
       himg:F.arg, aimg:F.jor, date:'Sábado 27 de junio', time:'23:00', venue:'Kansas City',
       unlock:AR(2026,5,27,0), kickoff:AR(2026,5,27,23),
