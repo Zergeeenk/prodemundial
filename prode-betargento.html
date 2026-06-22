@@ -564,9 +564,9 @@
     if(ADMIN_CTX || !currentUser() || !allTouched())return;
     const k='prode_bono_done_'+currentUser();
     if(store.get(k)==='1')return; // ya lo vio / ya lo reclamó
-    // esperar ~3s (y reiniciar con cada cambio) para no saltar antes de terminar el último
+    // a los 1.5s de poner la predicción salta el bono por participar (se reinicia con cada cambio)
     clearTimeout(bonoTimer);
-    bonoTimer=setTimeout(()=>{ if(store.get(k)==='1')return; store.set(k,'1'); openBono(); },3000);
+    bonoTimer=setTimeout(()=>{ if(store.get(k)==='1')return; store.set(k,'1'); openBono(); },1500);
   }
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.addEventListener('click',()=>{
@@ -795,7 +795,7 @@
     panel.innerHTML='<h2>🔐 Modo admin</h2>'+
       '<div class="ahint">Cargá el resultado real de cada partido (lado izquierdo = primer equipo). '+
       'Se guarda en la base y lo ven todos los jugadores.</div>'+
-      MATCHES.map(m=>{
+      MATCHES.filter(m=>!m.closed).map(m=>{
         const r=res[m.id]||{h:'',a:''};
         return '<div class="admin-match"><div class="anames">'+m.md+': '+m.home+' vs '+m.away+'</div>'+
           '<input type="number" min="0" max="50" id="ar-'+m.id+'-h" value="'+r.h+'" aria-label="'+m.home+'">'+
