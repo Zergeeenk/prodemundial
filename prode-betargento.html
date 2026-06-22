@@ -126,6 +126,7 @@
   .stepper button:disabled:hover{background:#f4f7fc;border-color:var(--line)}
   .score{font-size:20px;font-weight:800;min-width:38px;height:34px;text-align:center;color:var(--ink);
     background:#fff;border:1.5px solid var(--line);border-radius:10px;display:grid;place-items:center}
+  .score.final{margin-top:1px;color:var(--blue);background:var(--blue-soft);border-color:var(--blue-border);font-size:22px}
 
   /* ---------- LOCK ---------- */
   .lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -385,6 +386,11 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
+    // Debut ya jugado: solo se muestra el resultado, NO da premios (closed)
+    { id:'m1', md:'Fecha 1 · Debut', home:'Argentina', away:'Argelia',
+      himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
+      unlock:AR(2026,5,16,0), kickoff:AR(2026,5,16,22),
+      evName:'Argentina_vs_Algeria', apiHomeLeft:true, closed:true, finalScore:{h:3,a:0} },
     { id:'m2', md:'Fecha 2 · Hoy', home:'Austria', away:'Argentina',
       himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
       unlock:AR(2026,5,22,0), kickoff:AR(2026,5,22,14),
@@ -457,7 +463,7 @@
   }
   async function checkAdminResults(){
     const res=await dbGetResults();
-    MATCHES.forEach(m=>{ if(res[m.id]&&!results[m.id]) showResult(m,res[m.id]); });
+    MATCHES.forEach(m=>{ if(!m.closed && res[m.id]&&!results[m.id]) showResult(m,res[m.id]); });
   }
   // ---------- RECLAMOS DEL BONO (por tipo: participar / m1 / m2 / m3) ----------
   async function dbClaim(user,kind){
@@ -484,12 +490,20 @@
   const state={};
   MATCHES.forEach(m=>{let s=null;try{s=JSON.parse(store.get('prode_'+m.id))}catch(e){}state[m.id]=s||{h:0,a:0}});
 
-  const isOpen=m=>PREVIEW||m.forceOpen||new Date()>=m.unlock;
+  const isOpen=m=>!m.closed && (PREVIEW||m.forceOpen||new Date()>=m.unlock);
 
   function teamBlock(m,side){
     const name=side==='h'?m.home:m.away;
     const img=side==='h'?m.himg:m.aimg;
     const isArg=name==='Argentina';
+    if(m.closed){ // partido finalizado: marcador fijo, sin botones
+      const sc=side==='h'?m.finalScore.h:m.finalScore.a;
+      return `<div class="team">
+        <img class="flag" src="${img}" alt="">
+        <div class="team-name ${isArg?'arg':''}">${name}</div>
+        <div class="score final">${sc}</div>
+      </div>`;
+    }
     return `<div class="team">
       <img class="flag" src="${img}" alt="">
       <div class="team-name ${isArg?'arg':''}">${name}</div>
@@ -515,7 +529,9 @@
         ${teamBlock(m,'a')}
       </div>
       <div class="result" id="rs-${m.id}"></div>
-      ${open?`<div class="autosave" id="as-${m.id}">Se guarda solo · editá cuando quieras</div>`:`<div class="lock">
+      ${m.closed?''
+        :open?`<div class="autosave" id="as-${m.id}">Se guarda solo · editá cuando quieras</div>`
+        :`<div class="lock">
         <div class="ico">&#x1F512;&#xFE0E;</div>
         <div class="ltxt">Se desbloquea el<br><b>${m.date}</b></div>
         <div class="countdown" id="cd-${m.id}"></div>
@@ -590,7 +606,7 @@
   // estado de la tarjeta sin resultado: cerrado (por arrancar) -> EN VIVO (jugándose)
   function statusTick(){
     MATCHES.forEach(m=>{
-      if(results[m.id])return; // ya finalizó: el resultado lo pone showResult
+      if(m.closed||results[m.id])return; // closed/finalizado: el resultado lo pone showResult
       const el=document.getElementById('rs-'+m.id);if(!el)return;
       const now=Date.now();
       if(now>=m.kickoff.getTime()){
@@ -609,7 +625,7 @@
     results[m.id]=real;
     freezeMatch(m);
     const el=document.getElementById('rs-'+m.id);if(!el)return;
-    const played = !ADMIN_CTX && state[m.id].touched; // ¿este usuario jugó esta fecha?
+    const played = !ADMIN_CTX && state[m.id].touched && !m.closed; // partido viejo (closed) no da premios
     const p=state[m.id];
     const realDraw = real.h===real.a;
     let cls='miss',txt='No acertaste';
@@ -617,7 +633,9 @@
     else if(Math.sign(p.h-p.a)===Math.sign(real.h-real.a)){cls='win';txt=realDraw?'¡Acertaste el empate!':'Acertaste el ganador';}
     let html='<div class="finished">⏹ Partido finalizado</div>'+
              '<div class="real">Resultado real<b>'+real.h+' - '+real.a+'</b></div>';
-    if(played){
+    if(m.closed){
+      /* partido anterior: solo el resultado, sin premios ni "no jugaste" */
+    }else if(played){
       html+='<div class="badge '+cls+'">'+txt+'</div>'+
             '<button class="prizebtn" type="button" data-cls="'+cls+'" data-txt="'+txt+'">🎁 Ver premio</button>';
     }else{
@@ -667,12 +685,14 @@
   }
   async function checkResults(){
     for(const m of MATCHES){
-      if(results[m.id])continue;
-      if(!m.test && new Date()<m.kickoff)continue; // todavía no se jugó (los test buscan siempre)
+      if(m.closed||results[m.id])continue;
+      if(new Date()<m.kickoff)continue; // todavía no se jugó
       const real=await fetchResult(m);
       if(real){ showResult(m,real); dbUpsertResult(m.id,real); } // mostrar + persistir en la base
     }
   }
+  // mostrar el resultado fijo de los partidos ya jugados (closed)
+  MATCHES.forEach(m=>{ if(m.closed) showResult(m,m.finalScore); });
 
   freezeTick();setInterval(freezeTick,30000);
   tick();setInterval(tick,30000);
@@ -714,13 +734,14 @@
       const byUser={};
       picks.forEach(p=>{(byUser[p.username]||(byUser[p.username]={}))[p.match_id]={h:p.home,a:p.away};});
       const users=Object.keys(byUser).sort((a,b)=>a.localeCompare(b));
+      const cols=MATCHES.filter(m=>!m.closed); // los partidos viejos no dan premio
       let html='<table class="ctrl"><thead><tr><th>Usuario</th><th>Bono x participar</th>'+
-        MATCHES.map(m=>'<th>Bono '+m.md.split(' · ')[0]+'<div class="th-sub">'+m.home+' vs '+m.away+'</div></th>').join('')+
+        cols.map(m=>'<th>Bono '+m.md.split(' · ')[0]+'<div class="th-sub">'+m.home+' vs '+m.away+'</div></th>').join('')+
         '</tr></thead><tbody>';
       html+=users.map((u,i)=>{
         let row='<tr><td class="uname"></td>';
         row+=ctrlCell(i,'participar',{t:'100%',c:'p-part'},claimed.has(u+'|participar'));
-        MATCHES.forEach(m=>{
+        cols.forEach(m=>{
           const pk=byUser[u][m.id];
           if(!pk){ row+='<td class="muted">no jugó</td>'; return; }
           const tier=tierOf(pk,res[m.id]);
