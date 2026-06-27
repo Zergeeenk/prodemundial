@@ -391,14 +391,14 @@
       himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
       unlock:AR(2026,5,16,0), kickoff:AR(2026,5,16,22),
       evName:'Argentina_vs_Algeria', apiHomeLeft:true, closed:true, finalScore:{h:3,a:0} },
-    { id:'m2', md:'Fecha 2 · Hoy', home:'Austria', away:'Argentina',
+    { id:'m2', md:'Fecha 2', home:'Austria', away:'Argentina',
       himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
       unlock:AR(2026,5,22,0), kickoff:AR(2026,5,22,14),
-      evName:'Argentina_vs_Austria', apiHomeLeft:false, forceOpen:true, featured:true },
-    { id:'m3', md:'Fecha 3', home:'Argentina', away:'Jordania',
+      evName:'Argentina_vs_Austria', apiHomeLeft:false, closed:true, finalScore:{h:0,a:2} },
+    { id:'m3', md:'Fecha 3 · A jugar', home:'Argentina', away:'Jordania',
       himg:F.arg, aimg:F.jor, date:'Sábado 27 de junio', time:'23:00', venue:'Kansas City',
       unlock:AR(2026,5,27,0), kickoff:AR(2026,5,27,23),
-      evName:'Jordan_vs_Argentina', apiHomeLeft:false },
+      evName:'Jordan_vs_Argentina', apiHomeLeft:false, forceOpen:true, featured:true },
   ];
 
   // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
@@ -671,6 +671,10 @@
       const list=(d&&d.event)||[];
       const ev=list.find(e=>e.idLeague===WC_LEAGUE && (e.dateEvent||'').slice(0,4)==='2026');
       if(!ev)return null;
+      // SOLO cuando el partido TERMINÓ (no en vivo): así no muestra 0-0 mientras se juega
+      const st=(ev.strStatus||'').toUpperCase();
+      const FINISHED=['FT','AET','PEN','AP','MATCH FINISHED','FINISHED'];
+      if(!FINISHED.includes(st))return null;
       const hs=ev.intHomeScore,as=ev.intAwayScore;
       if(hs==null||hs===''||as==null||as==='')return null;
       // mapear el "local" de la API al lado correcto en pantalla (h=izquierda, a=derecha)
