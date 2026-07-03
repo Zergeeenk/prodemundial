@@ -339,10 +339,10 @@
     <p class="lede">Pronosticá el partido de Argentina en el Mundial. <b>¡Cargá tu resultado y ganá bonos!</b></p>
   </div>
 
-  <a id="bono" class="bono" href="#" target="_blank" rel="noopener">
+  <div id="bono" class="bono">
     <b>🎁 100% de bono en tu carga</b>
-    <small>Por jugar el prode · tocá para reclamarlo</small>
-  </a>
+    <small>Por jugar el prode</small>
+  </div>
 
   <div id="admin" class="admin"></div>
 
@@ -440,8 +440,9 @@
         if(map[m.id]){ state[m.id].h=map[m.id].h; state[m.id].a=map[m.id].a; state[m.id].saved=true; state[m.id].touched=true; }
         else if(reset){ state[m.id].h=0; state[m.id].a=0; state[m.id].saved=false; state[m.id].touched=false; }
         else return; // sin reset y sin fila guardada: dejar lo que haya local
+        const t=state[m.id].touched;
         const sh=document.getElementById('sc-'+m.id+'-h'), sa=document.getElementById('sc-'+m.id+'-a');
-        if(sh)sh.textContent=state[m.id].h; if(sa)sa.textContent=state[m.id].a;
+        if(sh)sh.textContent=t?state[m.id].h:'-'; if(sa)sa.textContent=t?state[m.id].a:'-';
         store.set('prode_'+m.id,JSON.stringify(state[m.id]));
       });
       if(typeof checkAllDone==='function') checkAllDone(); // si ya tenía las 3 jugadas, premio participar
@@ -503,7 +504,7 @@
       <div class="team-name ${isArg?'arg':''}">${name}</div>
       <div class="stepper">
         <button data-m="${m.id}" data-s="${side}" data-d="-1" aria-label="restar">−</button>
-        <div class="score" id="sc-${m.id}-${side}">${state[m.id][side]}</div>
+        <div class="score" id="sc-${m.id}-${side}">${state[m.id].touched?state[m.id][side]:'-'}</div>
         <button data-m="${m.id}" data-s="${side}" data-d="1" aria-label="sumar">+</button>
       </div>
     </div>`;
@@ -558,16 +559,18 @@
     if(ADMIN_CTX || !currentUser() || !allTouched())return;
     const k='prode_bono_done_'+ROUND+'_'+currentUser();
     if(store.get(k)==='1')return; // ya lo vio / ya lo reclamó
-    // a los 1.5s de poner la predicción salta el bono por participar (se reinicia con cada cambio)
+    // a los 2.5s de poner la predicción salta el bono por participar (se reinicia con cada cambio)
     clearTimeout(bonoTimer);
-    bonoTimer=setTimeout(()=>{ if(store.get(k)==='1')return; store.set(k,'1'); openBono(); },1500);
+    bonoTimer=setTimeout(()=>{ if(store.get(k)==='1')return; store.set(k,'1'); openBono(); },2500);
   }
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.addEventListener('click',()=>{
       const {m,s,d}=b.dataset;
-      state[m][s]=Math.max(0,Math.min(20,state[m][s]+(+d)));
-      document.getElementById(`sc-${m}-${s}`).textContent=state[m][s];
       state[m].saved=true; state[m].touched=true;      // autoguardado: queda jugado
+      state[m][s]=Math.max(0,Math.min(20,state[m][s]+(+d)));
+      // al tocar, los dos lados pasan de "-" a número
+      document.getElementById('sc-'+m+'-h').textContent=state[m].h;
+      document.getElementById('sc-'+m+'-a').textContent=state[m].a;
       store.set('prode_'+m,JSON.stringify(state[m]));
       scheduleSave(m); flashSaved(m); showBono(); checkAllDone();
     });
@@ -869,7 +872,7 @@
     if(!ADMIN_CTX && currentUser()){
       if(hasParticipated()){
         bono.innerHTML='<b>🎁 100% de bono en tu carga</b>'+
-          '<small>Por jugar el prode · tocá para reclamarlo</small>';
+          '<small>¡Ya es tuyo por jugar el prode!</small>';
       }else{
         bono.innerHTML='<b>🎁 ¡Participá en el prode y ganá un 100% en tu carga!</b>'+
           '<small>Si le pegás al resultado, ganás 3000 fichas</small>';
@@ -878,8 +881,6 @@
     }else bono.classList.remove('show');
   }
   showBono();
-  // al tocar el banner se abre la ventana emergente (no navega)
-  bono.addEventListener('click',e=>{e.preventDefault();openBono();});
 
   // ---------- VENTANA EMERGENTE: bono por participar ----------
   const bonoModal=document.getElementById('bonoModal');
