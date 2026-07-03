@@ -499,13 +499,14 @@
         <div class="score final">${sc}</div>
       </div>`;
     }
+    const dis=(Date.now()>=m.kickoff.getTime()-600000)?' disabled':''; // cerrado 10 min antes
     return `<div class="team">
       <img class="flag" src="${img}" alt="">
       <div class="team-name ${isArg?'arg':''}">${name}</div>
       <div class="stepper">
-        <button data-m="${m.id}" data-s="${side}" data-d="-1" aria-label="restar">−</button>
+        <button data-m="${m.id}" data-s="${side}" data-d="-1" aria-label="restar"${dis}>−</button>
         <div class="score" id="sc-${m.id}-${side}">${state[m.id].touched?state[m.id][side]:'-'}</div>
-        <button data-m="${m.id}" data-s="${side}" data-d="1" aria-label="sumar">+</button>
+        <button data-m="${m.id}" data-s="${side}" data-d="1" aria-label="sumar"${dis}>+</button>
       </div>
     </div>`;
   }
@@ -566,6 +567,9 @@
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.addEventListener('click',()=>{
       const {m,s,d}=b.dataset;
+      const mm=MATCHES.find(x=>x.id===m);
+      // blindaje: no se puede predecir si ya cerró (10 min antes), ya empezó o ya hay resultado
+      if(!mm||mm.closed||results[m]||Date.now()>=lockTime(mm))return;
       state[m].saved=true; state[m].touched=true;      // autoguardado: queda jugado
       state[m][s]=Math.max(0,Math.min(20,state[m][s]+(+d)));
       // al tocar, los dos lados pasan de "-" a número
