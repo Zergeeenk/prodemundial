@@ -245,6 +245,8 @@
     color:#fff;background:linear-gradient(135deg,#2f6bff,#1147d8);
     box-shadow:0 12px 26px -12px rgba(31,92,255,.7)}
   .bono.show{display:flex}
+  .bono.claim{cursor:pointer}
+  .bono.claim:active{transform:scale(.99)}
   .bono b{font-size:14px;font-weight:800;letter-spacing:.2px}
   .bono small{font-size:11px;font-weight:600;opacity:.92}
 
@@ -878,9 +880,11 @@
   function showBono(){
     if(!ADMIN_CTX && currentUser()){
       if(hasParticipated()){
-        bono.innerHTML='<b>🎁 100% de bono en tu carga</b>'+
-          '<small>¡Ya es tuyo por jugar el prode!</small>';
+        bono.classList.add('claim'); // activo y reclamable
+        bono.innerHTML='<b>🎁 Bono por participar ACTIVO</b>'+
+          '<small>Para reclamarlo, tocá acá 👆</small>';
       }else{
+        bono.classList.remove('claim');
         bono.innerHTML='<b>🎁 ¡Participá en el prode y ganá un 100% en tu carga!</b>'+
           '<small>Si le pegás al resultado, ganás 3000 fichas</small>';
       }
@@ -888,6 +892,8 @@
     }else bono.classList.remove('show');
   }
   showBono();
+  // ya participó -> tocar el banner reabre el popup del bono para reclamarlo
+  bono.addEventListener('click',()=>{ if(hasParticipated()) openBono(); });
 
   // ---------- VENTANA EMERGENTE: bono por participar ----------
   const bonoModal=document.getElementById('bonoModal');
