@@ -664,36 +664,39 @@
     s.classList.add('show');
   }
 
-  // leer el resultado real desde TheSportsDB (filtra Mundial 2026)
-  async function fetchResult(m){
-    try{
-      const r=await fetch(API+m.evName);
-      const d=await r.json();
-      const list=(d&&d.event)||[];
-      const ev=list.find(e=>e.idLeague===WC_LEAGUE && (e.dateEvent||'').slice(0,4)==='2026');
-      if(!ev)return null;
-      // SOLO cuando el partido TERMINÓ (no en vivo): así no muestra 0-0 mientras se juega
-      const st=(ev.strStatus||'').toUpperCase();
-      const FINISHED=['FT','AET','PEN','AP','MATCH FINISHED','FINISHED'];
-      if(!FINISHED.includes(st))return null;
-      const hs=ev.intHomeScore,as=ev.intAwayScore;
-      if(hs==null||hs===''||as==null||as==='')return null;
-      // mapear el "local" de la API al lado correcto en pantalla (h=izquierda, a=derecha)
-      return m.apiHomeLeft ? {h:+hs,a:+as} : {h:+as,a:+hs};
-    }catch(e){return null;}
-  }
+  const FINISHED=['FT','AET','PEN','AP','MATCH FINISHED','FINISHED'];
   // guardar en Supabase un resultado traído de la API (para que lo vea el admin y todos)
   async function dbUpsertResult(mid,real){
     if(!db)return;
     try{ await db.from('results').upsert({match_id:mid,home:real.h,away:real.a},{onConflict:'match_id'}); }
     catch(e){ console.warn('dbUpsertResult',e); }
   }
+  // consulta TheSportsDB: si el partido TERMINÓ (FT) pone el resultado final + premios;
+  // si está jugándose, actualiza el badge EN VIVO con el estado real y el marcador en vivo.
   async function checkResults(){
     for(const m of MATCHES){
       if(m.closed||results[m.id])continue;
-      if(new Date()<m.kickoff)continue; // todavía no se jugó
-      const real=await fetchResult(m);
-      if(real){ showResult(m,real); dbUpsertResult(m.id,real); } // mostrar + persistir en la base
+      if(Date.now()<m.kickoff.getTime())continue; // todavía no arrancó
+      try{
+        const r=await fetch(API+m.evName); const d=await r.json();
+        const ev=((d&&d.event)||[]).find(e=>e.idLeague===WC_LEAGUE && (e.dateEvent||'').slice(0,4)==='2026');
+        if(!ev)continue;
+        const st=(ev.strStatus||'').toUpperCase();
+        const hs=ev.intHomeScore, as=ev.intAwayScore;
+        const hasScore=!(hs==null||hs===''||as==null||as==='');
+        const map=()=>m.apiHomeLeft?{h:+hs,a:+as}:{h:+as,a:+hs};
+        if(FINISHED.includes(st) && hasScore){
+          const real=map();                       // ¡terminó de verdad! resultado final + premios
+          showResult(m,real); dbUpsertResult(m.id,real);
+        }else{
+          const el=document.getElementById('rs-'+m.id); if(!el)continue; // en vivo: estado real + marcador
+          const sc=map(); const lv=hasScore?(sc.h+'-'+sc.a):'';
+          const label=(st==='HT')?'ENTRETIEMPO':'EN VIVO';
+          el.dataset.st='live';
+          el.innerHTML='<div class="live"><span class="dot"></span>'+label+(lv?' · '+lv:' · jugándose')+'</div>';
+          el.classList.add('show');
+        }
+      }catch(e){}
     }
   }
   // mostrar el resultado fijo de los partidos ya jugados (closed)
@@ -704,7 +707,7 @@
   // primero los resultados que cargó el admin (prioridad), después TheSportsDB para los que falten
   (async()=>{ await checkAdminResults(); checkResults(); })();
   setInterval(checkAdminResults,30000);
-  setInterval(checkResults,90000);
+  setInterval(checkResults,40000); // consulta el estado del partido (en vivo / FT) cada 40s
   // realtime: cuando el admin guarda un resultado, se refleja al instante en todos (si está habilitado)
   try{ if(db) db.channel('results-rt')
     .on('postgres_changes',{event:'*',schema:'public',table:'results'},()=>checkAdminResults())
