@@ -336,7 +336,7 @@
   <div class="hero">
     <div id="greeting" class="greeting"></div>
     <h1 class="title">Prode <span>Argento!</span></h1>
-    <p class="lede">Pronosticá los partidos de Argentina. <b>El de hoy ya está abierto</b>; el resto se abre el día del partido.</p>
+    <p class="lede">Pronosticá el partido de Argentina en el Mundial. <b>¡Cargá tu resultado y ganá bonos!</b></p>
   </div>
 
   <a id="bono" class="bono" href="#" target="_blank" rel="noopener">
@@ -377,7 +377,8 @@
 (function(){
   // banderas reales (archivos locales; espacios escapados como %20)
   const F={arg:'Bandera%20Argentina.webp', alg:'Bandera%20Argelia.jpg',
-           aut:'Bandera%20austria.avif', jor:'jordania%20bandera.avif'};
+           aut:'Bandera%20austria.avif', jor:'jordania%20bandera.avif',
+           cv:'https://flagcdn.com/w160/cv.png'};
 
   // Todas las fechas/horas son de ARGENTINA (UTC-3), fijas para CUALQUIER visitante
   // (no dependen del reloj/zona local del navegador). AR(año,mes,día,horaARG[,min]).
@@ -386,19 +387,10 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
-    // Debut ya jugado: solo se muestra el resultado, NO da premios (closed)
-    { id:'m1', md:'Fecha 1 · Debut', home:'Argentina', away:'Argelia',
-      himg:F.arg, aimg:F.alg, date:'Martes 16 de junio', time:'22:00', venue:'Kansas City',
-      unlock:AR(2026,5,16,0), kickoff:AR(2026,5,16,22),
-      evName:'Argentina_vs_Algeria', apiHomeLeft:true, closed:true, finalScore:{h:3,a:0} },
-    { id:'m2', md:'Fecha 2', home:'Austria', away:'Argentina',
-      himg:F.aut, aimg:F.arg, date:'Lunes 22 de junio', time:'14:00', venue:'Dallas',
-      unlock:AR(2026,5,22,0), kickoff:AR(2026,5,22,14),
-      evName:'Argentina_vs_Austria', apiHomeLeft:false, closed:true, finalScore:{h:0,a:2} },
-    { id:'m3', md:'Fecha 3 · A jugar', home:'Argentina', away:'Jordania',
-      himg:F.arg, aimg:F.jor, date:'Sábado 27 de junio', time:'23:00', venue:'Kansas City',
-      unlock:AR(2026,5,27,0), kickoff:AR(2026,5,27,23),
-      evName:'Jordan_vs_Argentina', apiHomeLeft:false, forceOpen:true, featured:true },
+    { id:'r32', md:'16avos de final · Hoy', home:'Argentina', away:'Cabo Verde',
+      himg:F.arg, aimg:F.cv, date:'Jueves 3 de julio', time:'19:00', venue:'Copa Mundial 2026',
+      unlock:AR(2026,6,3,0), kickoff:AR(2026,6,3,19),
+      evName:'Argentina_vs_Cape_Verde', apiHomeLeft:true, forceOpen:true, featured:true },
   ];
 
   // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
@@ -421,6 +413,8 @@
   const ADMIN_CTX = params.has('admin'); // ?admin => modo admin (no pide usuario)
   // link de registro/carga adonde van los botones de los bonos (cambiar por la URL real)
   const BONUS_URL='#';
+  // identificador de la fase actual: al cambiarlo, el bono por participar vuelve a saltar a todos
+  const ROUND='r32';
   const mem={};
   const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},
                set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
@@ -484,7 +478,7 @@
   async function refreshClaimed(){
     const u=currentUser(); if(!db||!u)return;
     try{ const {data}=await db.from('claims').select('kind').eq('username',u).eq('kind','participar');
-      if(data&&data.length) store.set('prode_bono_done_'+u,'1'); }catch(e){}
+      if(data&&data.length) store.set('prode_bono_done_'+ROUND+'_'+u,'1'); }catch(e){}
   }
 
   const state={};
@@ -562,7 +556,7 @@
   let bonoTimer=null;
   function checkAllDone(){
     if(ADMIN_CTX || !currentUser() || !allTouched())return;
-    const k='prode_bono_done_'+currentUser();
+    const k='prode_bono_done_'+ROUND+'_'+currentUser();
     if(store.get(k)==='1')return; // ya lo vio / ya lo reclamó
     // a los 1.5s de poner la predicción salta el bono por participar (se reinicia con cada cambio)
     clearTimeout(bonoTimer);
