@@ -380,7 +380,8 @@
   // banderas reales (archivos locales; espacios escapados como %20)
   const F={arg:'Bandera%20Argentina.webp', alg:'Bandera%20Argelia.jpg',
            aut:'Bandera%20austria.avif', jor:'jordania%20bandera.avif',
-           cv:'https://flagcdn.com/w160/cv.png'};
+           cv:'https://flagcdn.com/w160/cv.png',
+           eg:'https://flagcdn.com/w160/eg.png'};
 
   // Todas las fechas/horas son de ARGENTINA (UTC-3), fijas para CUALQUIER visitante
   // (no dependen del reloj/zona local del navegador). AR(año,mes,día,horaARG[,min]).
@@ -389,10 +390,15 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
-    { id:'r32', md:'16avos de final · Hoy', home:'Argentina', away:'Cabo Verde',
+    // 16avos ya jugado: se muestra el resultado (Argentina 3-2 en el alargue), sin premios
+    { id:'r32', md:'16avos de final', home:'Argentina', away:'Cabo Verde',
       himg:F.arg, aimg:F.cv, date:'Jueves 3 de julio', time:'19:00', venue:'Copa Mundial 2026',
       unlock:AR(2026,6,3,0), kickoff:AR(2026,6,3,19),
-      evName:'Argentina_vs_Cape_Verde', apiHomeLeft:true, forceOpen:true, featured:true },
+      evName:'Argentina_vs_Cape_Verde', apiHomeLeft:true, closed:true, finalScore:{h:3,a:2} },
+    { id:'r16', md:'Octavos de final · A jugar', home:'Argentina', away:'Egipto',
+      himg:F.arg, aimg:F.eg, date:'Martes 7 de julio', time:'13:00', venue:'Copa Mundial 2026',
+      unlock:AR(2026,6,7,0), kickoff:AR(2026,6,7,13),
+      evName:'Argentina_vs_Egypt', apiHomeLeft:true, forceOpen:true, featured:true },
   ];
 
   // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
@@ -416,7 +422,7 @@
   // link de registro/carga adonde van los botones de los bonos (cambiar por la URL real)
   const BONUS_URL='#';
   // identificador de la fase actual: al cambiarlo, el bono por participar vuelve a saltar a todos
-  const ROUND='r32';
+  const ROUND='r16';
   const mem={};
   const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},
                set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
