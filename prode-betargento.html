@@ -381,7 +381,8 @@
   const F={arg:'Bandera%20Argentina.webp', alg:'Bandera%20Argelia.jpg',
            aut:'Bandera%20austria.avif', jor:'jordania%20bandera.avif',
            cv:'https://flagcdn.com/w160/cv.png',
-           eg:'https://flagcdn.com/w160/eg.png'};
+           eg:'https://flagcdn.com/w160/eg.png',
+           ch:'https://flagcdn.com/w160/ch.png'};
 
   // Todas las fechas/horas son de ARGENTINA (UTC-3), fijas para CUALQUIER visitante
   // (no dependen del reloj/zona local del navegador). AR(año,mes,día,horaARG[,min]).
@@ -390,10 +391,10 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
-    { id:'r16', md:'Octavos de final · A jugar', home:'Argentina', away:'Egipto',
-      himg:F.arg, aimg:F.eg, date:'Martes 7 de julio', time:'13:00', venue:'Copa Mundial 2026',
-      unlock:AR(2026,6,7,0), kickoff:AR(2026,6,7,13),
-      evName:'Argentina_vs_Egypt', apiHomeLeft:true, forceOpen:true, featured:true },
+    { id:'qf', md:'Cuartos de final · Hoy', home:'Argentina', away:'Suiza',
+      himg:F.arg, aimg:F.ch, date:'Sábado 11 de julio', time:'22:00', venue:'Copa Mundial 2026',
+      unlock:AR(2026,6,11,0), kickoff:AR(2026,6,11,22),
+      evName:'Argentina_vs_Switzerland', apiHomeLeft:true, forceOpen:true, featured:true },
   ];
 
   // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
@@ -417,7 +418,7 @@
   // link de registro/carga adonde van los botones de los bonos (cambiar por la URL real)
   const BONUS_URL='#';
   // identificador de la fase actual: al cambiarlo, el bono por participar vuelve a saltar a todos
-  const ROUND='r16';
+  const ROUND='qf';
   const mem={};
   const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},
                set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
