@@ -338,7 +338,7 @@
   <div class="hero">
     <div id="greeting" class="greeting"></div>
     <h1 class="title">Prode <span>Argento!</span></h1>
-    <p class="lede">Pronosticá el partido de Argentina en el Mundial. <b>¡Cargá tu resultado y ganá bonos!</b></p>
+    <p class="lede">🏆 <b>¡LA FINAL DEL MUNDO!</b> España vs Argentina. Pronosticá el resultado y ganá bonos.</p>
   </div>
 
   <div id="bono" class="bono">
@@ -383,7 +383,8 @@
            cv:'https://flagcdn.com/w160/cv.png',
            eg:'https://flagcdn.com/w160/eg.png',
            ch:'https://flagcdn.com/w160/ch.png',
-           eng:'https://flagcdn.com/w160/gb-eng.png'};
+           eng:'https://flagcdn.com/w160/gb-eng.png',
+           es:'https://flagcdn.com/w160/es.png'};
 
   // Todas las fechas/horas son de ARGENTINA (UTC-3), fijas para CUALQUIER visitante
   // (no dependen del reloj/zona local del navegador). AR(año,mes,día,horaARG[,min]).
@@ -392,10 +393,10 @@
   // home = lado IZQUIERDO, away = lado DERECHO de la tarjeta.
   // apiHomeLeft: si el "local" del evento en la API cae a la izquierda en pantalla.
   const MATCHES = [
-    { id:'sf', md:'Semifinal', home:'Inglaterra', away:'Argentina',
-      himg:F.eng, aimg:F.arg, date:'Miércoles 15 de julio', time:'16:00', venue:'Copa Mundial 2026',
-      unlock:AR(2026,6,15,0), kickoff:AR(2026,6,15,16),
-      evName:'England_vs_Argentina', apiHomeLeft:true, forceOpen:true, featured:true },
+    { id:'final', md:'🏆 FINAL DEL MUNDIAL', home:'España', away:'Argentina',
+      himg:F.es, aimg:F.arg, date:'Domingo 19 de julio', time:'16:00', venue:'Copa Mundial 2026',
+      unlock:AR(2026,6,19,0), kickoff:AR(2026,6,19,16),
+      evName:'Spain_vs_Argentina', apiHomeLeft:true, forceOpen:true, featured:true },
   ];
 
   // Fuente de resultados: TheSportsDB (gratis, sin backend). idLeague 4429 = FIFA World Cup.
@@ -419,7 +420,7 @@
   // link de registro/carga adonde van los botones de los bonos (cambiar por la URL real)
   const BONUS_URL='#';
   // identificador de la fase actual: al cambiarlo, el bono por participar vuelve a saltar a todos
-  const ROUND='sf';
+  const ROUND='final';
   const mem={};
   const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},
                set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
